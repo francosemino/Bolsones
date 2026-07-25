@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
+@layer base {
+    :root {
+        --background: 210 20% 98%; /* #F9FAFB */
+        --foreground: 220 13% 13%; /* #111827 */
+        --card: 0 0% 100%;
+        --card-foreground: 220 13% 13%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 220 13% 13%;
+        --primary: 135 12% 20%; /* #2C392F deep olive */
+        --primary-foreground: 0 0% 100%;
+        --secondary: 210 17% 95%;
+        --secondary-foreground: 220 13% 13%;
+        --muted: 210 17% 95%;
+        --muted-foreground: 220 9% 46%;
+        --accent: 27 80% 52%; /* #E67E22 */
+        --accent-foreground: 0 0% 100%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 220 13% 91%; /* #E5E7EB */
+        --input: 220 13% 91%;
+        --ring: 135 12% 20%;
+        --radius: 0.625rem;
+
+        --chart-1: 135 25% 35%;
+        --chart-2: 27 80% 52%;
+        --chart-3: 200 30% 45%;
+        --chart-4: 45 80% 55%;
+        --chart-5: 12 60% 55%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    html,
+    body {
+        margin: 0;
+        background: hsl(var(--background));
+        color: hsl(var(--foreground));
+        font-family:
+            "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont,
+            sans-serif;
+        -webkit-font-smoothing: antialiased;
+    }
+    h1,
+    h2,
+    h3,
+    h4,
+    h5 {
+        font-family: "Outfit", sans-serif;
+        letter-spacing: -0.01em;
+    }
+}
+
+@layer components {
+    .font-mono-display {
+        font-family: "JetBrains Mono", monospace;
+    }
+    .label-uppercase {
+        @apply text-xs font-semibold uppercase tracking-[0.18em] text-gray-500;
+    }
+    .card-soft {
+        @apply rounded-xl border border-gray-200 bg-white shadow-sm;
+    }
+    .glass-header {
+        background: rgba(255, 255, 255, 0.72);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+    }
+    .state-badge {
+        @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium;
+    }
+    .state-disponible {
+        @apply bg-emerald-50 text-emerald-700 border-emerald-300;
+    }
+    .state-reservado {
+        @apply bg-blue-50 text-blue-700 border-blue-300;
+    }
+    .state-vendido {
+        @apply bg-slate-100 text-slate-600 border-slate-300;
+    }
+    .state-pendiente {
+        @apply bg-amber-50 text-amber-800 border-amber-300;
+    }
+    .state-cancelado {
+        @apply bg-red-50 text-red-700 border-red-300;
+    }
+    .state-stock-bajo {
+        @apply bg-orange-50 text-orange-700 border-orange-300;
+    }
+    .state-pagado {
+        @apply bg-emerald-50 text-emerald-700 border-emerald-300;
+    }
+    .state-pendiente-pago {
+        @apply bg-amber-50 text-amber-800 border-amber-300;
+    }
+
+    /* Hide scrollbar but keep functionality */
+    .scrollbar-thin::-webkit-scrollbar {
+        height: 6px;
+        width: 6px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 4px;
+    }
+}
+
+/* Print styles for labels */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #print-label,
+    #print-label * {
+        visibility: visible;
+    }
+    #print-label {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    .no-print {
+        display: none !important;
+    }
+}

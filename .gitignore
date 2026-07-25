@@ -1,0 +1,30 @@
+# Node / React
+node_modules/
+frontend/node_modules/
+build/
+dist/
+
+# Python
+venv/
+backend/venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Env
+.env
+backend/.env
+frontend/.env
+
+# Emergent / reports
+.emergent/
+test_reports/
+.memory/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Zips
+*.zip
