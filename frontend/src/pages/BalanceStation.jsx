@@ -7,7 +7,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
-import { Scale, Plus, Search, Send, Trash2, X, ShoppingBag, Percent } from "lucide-react";
+import { Scale, Plus, Search, Send, Trash2, X, ShoppingBag, Percent, Settings } from "lucide-react";
 import { toast } from "sonner";
 
 /**
@@ -34,6 +34,9 @@ export default function BalanceStation() {
   const [discountReason, setDiscountReason] = useState("");
   const [sending, setSending] = useState(false);
   const [busy, setBusy] = useState(false); // evita doble-tap / doble-scan en altas y bajas
+  const [manageOpen, setManageOpen] = useState(false);
+  const [newStationName, setNewStationName] = useState("");
+  const [creatingStation, setCreatingStation] = useState(false);
 
   const loadStations = async () => {
     const { data } = await api.get("/stations");
@@ -195,6 +198,23 @@ export default function BalanceStation() {
     finally { setBusy(false); }
   };
 
+  const createStation = async () => {
+    if (!newStationName.trim()) return toast.error("Ponele un nombre al puesto");
+    setCreatingStation(true);
+    try {
+      const { data } = await api.post("/stations", { name: newStationName.trim(), kind: "balanza" });
+      toast.success(`Puesto "${data.name}" creado`);
+      setNewStationName("");
+      await loadStations();
+      changeStation(data.id); // pasa a usar el puesto recién creado en esta tablet
+      setManageOpen(false);
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail));
+    } finally {
+      setCreatingStation(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header + station picker */}
@@ -207,16 +227,51 @@ export default function BalanceStation() {
         </div>
         <div className="flex items-center gap-2">
           <Select value={stationId} onValueChange={changeStation}>
-            <SelectTrigger className="w-48" data-testid="station-select"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-48" data-testid="station-select"><SelectValue placeholder="Sin puestos" /></SelectTrigger>
             <SelectContent>
               {stations.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Button variant="outline" onClick={() => setManageOpen(true)} data-testid="manage-stations-btn">
+            <Settings className="w-4 h-4" />
+          </Button>
           <Button className="bg-[hsl(var(--primary))]" onClick={newTicket} disabled={busy} data-testid="new-ticket-btn">
             <Plus className="w-4 h-4 mr-1.5" /> Nuevo ticket
           </Button>
         </div>
       </div>
+
+      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Puestos de balanza</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              {stations.map(s => (
+                <div key={s.id} className="text-sm p-2 border border-gray-100 rounded-md flex justify-between items-center">
+                  <span>{s.name}</span>
+                  {s.id === stationId && <span className="text-xs text-[hsl(var(--primary))] font-medium">Este dispositivo</span>}
+                </div>
+              ))}
+              {stations.length === 0 && <div className="text-sm text-gray-500 text-center py-2">Todavía no hay ningún puesto creado</div>}
+            </div>
+            <div className="border-t border-gray-100 pt-3 flex gap-2">
+              <Input
+                placeholder="Nombre del puesto (ej: Balanza 1)"
+                value={newStationName}
+                onChange={(e) => setNewStationName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && createStation()}
+                data-testid="new-station-name-input"
+              />
+              <Button onClick={createStation} disabled={creatingStation} className="bg-[hsl(var(--primary))]" data-testid="create-station-btn">
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setManageOpen(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: active tickets list */}

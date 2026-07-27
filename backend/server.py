@@ -937,7 +937,8 @@ async def _send_whatsapp_order_confirmation(order: Order):
             "4": f"{order.total:.2f}",
             "5": _fmt_date_es(order.scheduled_date),
         }
-        contact = cfg.get("whatsapp") or cfg.get("phone") or "-"
+        contact_raw = cfg.get("whatsapp") or cfg.get("phone") or ""
+        contact = f"https://wa.me/{_normalize_ar_whatsapp_number(contact_raw).lstrip('+')}" if contact_raw else "-"
         if order.payment_method == "transferencia":
             variables["6"] = cfg.get("bank_alias") or "-"
             variables["7"] = cfg.get("bank_cbu") or "-"
