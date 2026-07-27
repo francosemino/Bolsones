@@ -15,7 +15,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, Query, WebSocket, WebSocketDisconnect, Body
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, Query, WebSocket, WebSocketDisconnect, Body, Header
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -153,6 +153,32 @@ async def root():
 # ============================================================
 # AUTH
 # ============================================================
+
+@api.post("/admin/bootstrap")
+async def admin_bootstrap(payload: dict, x_bootstrap_secret: str = Header(None)):
+    """Endpoint de emergencia: crea o resetea un usuario admin en cualquier
+    momento, sin depender del arranque del server. Protegido por un secreto
+    aparte (BOOTSTRAP_SECRET) que no es la contraseña del admin."""
+    secret = os.environ.get("BOOTSTRAP_SECRET")
+    if not secret or x_bootstrap_secret != secret:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    email = payload.get("email", "").lower().strip()
+    password = payload.get("password", "")
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Faltan email o password")
+    existing = await db.users.find_one({"email": email})
+    if existing:
+        await db.users.update_one({"email": email}, {"$set": {
+            "password_hash": hash_password(password), "role": "admin", "active": True,
+        }})
+        return {"ok": True, "action": "actualizado", "email": email}
+    else:
+        u = User(email=email, name="Administrador", role="admin").model_dump()
+        u["password_hash"] = hash_password(password)
+        await db.users.insert_one(u)
+        return {"ok": True, "action": "creado", "email": email}
+
+
 @api.post("/auth/login")
 async def login(payload: UserLogin, response: Response):
     email = payload.email.lower().strip()
