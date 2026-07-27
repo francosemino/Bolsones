@@ -31,7 +31,7 @@ export default function Employees() {
   const [edit, setEdit] = useState(blank);
   const [linkedUser, setLinkedUser] = useState(null); // usuario del sistema vinculado a este empleado
   const [showLoginForm, setShowLoginForm] = useState(false);
-  const [loginForm, setLoginForm] = useState({ email: "", password: "", permissions: [] });
+  const [loginForm, setLoginForm] = useState({ username: "", email: "", password: "", permissions: [] });
 
   const load = async () => setList((await api.get("/employees")).data);
   useEffect(() => { load(); }, []);
@@ -39,7 +39,7 @@ export default function Employees() {
   const openEdit = async (emp) => {
     setEdit(emp);
     setShowLoginForm(false);
-    setLoginForm({ email: "", password: "", permissions: [] });
+    setLoginForm({ username: "", email: "", password: "", permissions: [] });
     setLinkedUser(null);
     setOpen(true);
     if (emp.user_id) {
@@ -66,13 +66,13 @@ export default function Employees() {
   };
 
   const createLogin = async () => {
-    if (!loginForm.email || !loginForm.password) return toast.error("Completá usuario y contraseña");
+    if (!loginForm.username || !loginForm.password) return toast.error("Completá usuario y contraseña");
     try {
       const { data } = await api.post(`/employees/${edit.id}/create-login`, loginForm);
       toast.success("Usuario creado — ya puede fichar y usar el sistema con esos permisos");
       setShowLoginForm(false);
-      setEdit({ ...edit, user_id: data.user_id }); // el diálogo ahora sabe que ya tiene usuario
-      setLinkedUser({ id: data.user_id, email: data.email, permissions: loginForm.permissions });
+      setEdit({ ...edit, user_id: data.user_id });
+      setLinkedUser({ id: data.user_id, username: data.username, email: loginForm.email, permissions: loginForm.permissions });
       load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
@@ -176,7 +176,7 @@ export default function Employees() {
               {linkedUser ? (
                 <div className="space-y-3">
                   <div className="text-sm bg-gray-50 rounded-md p-2.5">
-                    Usuario: <span className="font-mono-display">{linkedUser.email}</span>
+                    Usuario: <span className="font-mono-display">{linkedUser.username}</span>
                   </div>
                   <div>
                     <Label className="text-xs">Qué puede hacer en el sistema</Label>
@@ -206,9 +206,10 @@ export default function Employees() {
               ) : showLoginForm ? (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label className="text-xs">Nombre de usuario</Label><Input value={loginForm.email} onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })} placeholder="juan.perez" data-testid="login-username-input" /></div>
+                    <div><Label className="text-xs">Nombre de usuario</Label><Input value={loginForm.username} onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })} placeholder="juan.perez" data-testid="login-username-input" /></div>
                     <div><Label className="text-xs">Contraseña</Label><Input type="password" value={loginForm.password} onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} data-testid="login-password-input" /></div>
                   </div>
+                  <div><Label className="text-xs">Email (opcional, para notificaciones)</Label><Input value={loginForm.email} onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })} placeholder="juan@real.com" data-testid="login-email-input" /></div>
                   <div>
                     <Label className="text-xs">Qué puede hacer en el sistema</Label>
                     <div className="grid grid-cols-2 gap-1.5 mt-1.5">

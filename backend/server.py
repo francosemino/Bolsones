@@ -181,19 +181,18 @@ async def admin_bootstrap(payload: dict, x_bootstrap_secret: str = Header(None))
 
 @api.post("/auth/login")
 async def login(payload: UserLogin, response: Response):
-    email = payload.email.lower().strip()
-    user = await db.users.find_one({"email": email})
+    identifier = payload.identifier.lower().strip()
+    user = await db.users.find_one({"$or": [{"username": identifier}, {"email": identifier}]})
     if not user or not verify_password(payload.password, user.get("password_hash", "")):
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     if not user.get("active", True):
         raise HTTPException(status_code=403, detail="Usuario inactivo")
-    access = create_access_token(user["id"], user["email"], user.get("role", "cajero"))
+    access = create_access_token(user["id"], user["username"], user.get("role", "cajero"))
     refresh = create_refresh_token(user["id"])
-    response.set_cookie("access_token", access, httponly=True, secure=False, samesite="lax", max_age=12*3600, path="/")
+    response.set_cookie("access_token", access, httponly=True, secure=False, samesite="lax", max_age=16*3600, path="/")
     response.set_cookie("refresh_token", refresh, httponly=True, secure=False, samesite="lax", max_age=14*24*3600, path="/")
     safe = {k: v for k, v in user.items() if k not in ("_id", "password_hash")}
     return {"user": safe, "access_token": access}
-
 
 @api.post("/auth/logout")
 async def logout(response: Response):
@@ -215,11 +214,14 @@ async def list_users(user: dict = Depends(require_perm("config"))):
 
 @api.post("/auth/users")
 async def create_user(payload: UserCreate, user: dict = Depends(require_perm("config"))):
-    email = payload.email.lower().strip()
-    if await db.users.find_one({"email": email}):
-        raise HTTPException(status_code=400, detail="Email ya registrado")
-    u = User(email=email, name=payload.name, role=payload.role, phone=payload.phone,
-             permissions=payload.permissions)
+    username = payload.username.lower().strip()
+    if await db.users.find_one({"username": username}):
+        raise HTTPException(status_code=400, detail="Ese nombre de usuario ya existe")
+    email = payload.email.lower().strip() if payload.email else None
+    if email and await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="Ese email ya está en uso")
+    u = User(username=username, email=email, name=payload.name, role=payload.role,
+             phone=payload.phone, permissions=payload.permissions)
     doc = u.model_dump()
     doc["password_hash"] = hash_password(payload.password)
     await db.users.insert_one(doc)
@@ -228,7 +230,18 @@ async def create_user(payload: UserCreate, user: dict = Depends(require_perm("co
 
 @api.patch("/auth/users/{user_id}")
 async def update_user(user_id: str, payload: dict, user: dict = Depends(require_perm("config"))):
-    update = {k: v for k, v in payload.items() if k in ("name", "role", "phone", "active", "permissions")}
+    update = {k: v for k, v in payload.items()
+              if k in ("name", "role", "phone", "active", "permissions", "username", "email")}
+    if update.get("username"):
+        update["username"] = update["username"].lower().strip()
+        clash = await db.users.find_one({"username": update["username"], "id": {"$ne": user_id}})
+        if clash:
+            raise HTTPException(status_code=400, detail="Ese nombre de usuario ya existe")
+    if "email" in update and update["email"]:
+        update["email"] = update["email"].lower().strip()
+        clash = await db.users.find_one({"email": update["email"], "id": {"$ne": user_id}})
+        if clash:
+            raise HTTPException(status_code=400, detail="Ese email ya está en uso")
     if "password" in payload and payload["password"]:
         update["password_hash"] = hash_password(payload["password"])
     if update:
@@ -1168,8 +1181,9 @@ async def delete_employee(eid: str, user: dict = Depends(require("encargado"))):
     return {"ok": True}
 
 class CreateEmployeeLoginPayload(BaseModel):
-    email: str  # nombre de usuario para el login (no hace falta que sea un mail real)
+    username: str  # para iniciar sesión (no hace falta que sea un mail real)
     password: str
+    email: Optional[str] = None  # email de contacto real, opcional
     role: str = "lectura"  # etiqueta del puesto, no da permisos por sí sola
     permissions: List[str] = []  # lo que este usuario puede hacer en el sistema
 
@@ -1180,16 +1194,17 @@ async def create_employee_login(eid: str, payload: CreateEmployeeLoginPayload,
     emp = await db.employees.find_one({"id": eid}, {"_id": 0})
     if not emp:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
-    email = payload.email.lower().strip()
-    if await db.users.find_one({"email": email}):
+    username = payload.username.lower().strip()
+    if await db.users.find_one({"username": username}):
         raise HTTPException(status_code=400, detail="Ese nombre de usuario ya existe")
-    u = User(email=email, name=emp["name"], role=payload.role, phone=emp.get("phone"),
+    email = payload.email.lower().strip() if payload.email else None
+    u = User(username=username, email=email, name=emp["name"], role=payload.role, phone=emp.get("phone"),
              permissions=payload.permissions)
     doc = u.model_dump()
     doc["password_hash"] = hash_password(payload.password)
     await db.users.insert_one(doc)
     await db.employees.update_one({"id": eid}, {"$set": {"user_id": u.id}})
-    return {"ok": True, "user_id": u.id, "email": email}
+    return {"ok": True, "user_id": u.id, "username": username}
 
 
 @api.post("/employees/{eid}/unlink-login")
@@ -2370,7 +2385,17 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     # Indexes
-    await db.users.create_index("email", unique=True)
+    # Migración: usuarios creados antes de separar username/email todavía no
+    # tienen 'username' — se lo completamos con su email viejo para no romper
+    # el índice único nuevo ni dejarlos sin poder loguearse.
+    async for old_user in db.users.find({"username": {"$exists": False}}):
+        await db.users.update_one(
+            {"id": old_user["id"]},
+            {"$set": {"username": (old_user.get("email") or old_user["id"]).lower()}},
+        )
+
+    await db.users.create_index("username", unique=True)
+    await db.users.create_index("email", unique=True, sparse=True)
     await db.products.create_index("name")
     await db.bags.create_index("code", unique=True)
     await db.bags.create_index("status")
@@ -2379,7 +2404,7 @@ async def startup():
     await db.stock_movements.create_index([("product_id", 1), ("created_at", -1)])
 
     # Seed admin
-    admin_email = os.environ.get("ADMIN_EMAIL", "admin@bolsones.com").lower()
+    admin_identifier = os.environ.get("ADMIN_EMAIL", "admin@bolsones.com").lower()
     admin_pass = os.environ.get("ADMIN_PASSWORD", "")
     if IS_PRODUCTION:
         if not admin_pass or admin_pass == "admin123":
@@ -2391,15 +2416,15 @@ async def startup():
         admin_pass = "admin123"  # solo como fallback en desarrollo
         logger.warning("Usando ADMIN_PASSWORD por defecto 'admin123' (modo desarrollo).")
 
-    existing = await db.users.find_one({"email": admin_email})
+    existing = await db.users.find_one({"$or": [{"username": admin_identifier}, {"email": admin_identifier}]})
     if not existing:
-        u = User(email=admin_email, name="Administrador", role="admin").model_dump()
+        u = User(username=admin_identifier, email=admin_identifier, name="Administrador", role="admin").model_dump()
         u["password_hash"] = hash_password(admin_pass)
         await db.users.insert_one(u)
-        logger.info(f"Admin creado: {admin_email}")
+        logger.info(f"Admin creado: {admin_identifier}")
     else:
         if not verify_password(admin_pass, existing.get("password_hash", "")):
-            await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_pass)}})
+            await db.users.update_one({"id": existing["id"]}, {"$set": {"password_hash": hash_password(admin_pass)}})
 
     # Demo cashier/bag-builder y datos demo: SOLO fuera de producción,
     # para no dejar usuarios de prueba en el local del cliente.
@@ -2408,13 +2433,13 @@ async def startup():
             ("cajero@bolsones.com", "Sofía Cajera", "cajero", "cajero123", ["ventas"]),
             ("armador@bolsones.com", "Lucas Armador", "armador", "armador123", ["bolsones", "ventas"]),
         ]:
-            ex = await db.users.find_one({"email": em})
+            ex = await db.users.find_one({"$or": [{"username": em}, {"email": em}]})
             if not ex:
-                u = User(email=em, name=name, role=role, permissions=perms).model_dump()
+                u = User(username=em, email=em, name=name, role=role, permissions=perms).model_dump()
                 u["password_hash"] = hash_password(pwd)
                 await db.users.insert_one(u)
             else:
-                await db.users.update_one({"email": em}, {"$set": {"permissions": perms}})
+                await db.users.update_one({"id": ex["id"]}, {"$set": {"permissions": perms}})
 
         try:
             await seed_demo_data(db)

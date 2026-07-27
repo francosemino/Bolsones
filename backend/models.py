@@ -17,7 +17,8 @@ def new_id() -> str:
 class User(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=new_id)
-    email: str
+    username: str  # para iniciar sesión — no hace falta que sea un email real
+    email: Optional[str] = None  # email de contacto real (notificaciones, recuperación)
     name: str
     role: Literal["admin", "encargado", "cajero", "armador", "repartidor", "lectura"] = "cajero"
     permissions: List[str] = []  # "ventas","stock","bolsones","perdidas","pedidos","reportes","empleados","config"
@@ -27,16 +28,17 @@ class User(BaseModel):
 
 
 class UserCreate(BaseModel):
-    email: str
+    username: str
     password: str
     name: str
+    email: Optional[str] = None
     role: str = "cajero"
     permissions: List[str] = []
     phone: Optional[str] = None
 
 
 class UserLogin(BaseModel):
-    email: str
+    identifier: str  # acepta username O email, cualquiera de los dos sirve para entrar
     password: str
 
 

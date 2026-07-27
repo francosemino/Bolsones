@@ -9,7 +9,7 @@ import { toast, Toaster } from "sonner";
 
 export default function Fichaje() {
   const { user, loading, login, logout } = useAuth();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -32,7 +32,7 @@ export default function Fichaje() {
     e.preventDefault();
     setError(""); setSubmitting(true);
     try {
-      await login(email, password);
+      await login(identifier, password);
     } catch (e) {
       setError(formatApiError(e.response?.data?.detail) || "No pudimos iniciar sesión");
     } finally { setSubmitting(false); }
@@ -67,7 +67,7 @@ export default function Fichaje() {
           <form onSubmit={submitLogin} className="space-y-3 text-left">
             <div>
               <Label>Usuario</Label>
-              <Input value={email} onChange={(e) => setEmail(e.target.value)} data-testid="fichaje-username-input" required autoFocus />
+              <Input value={identifier} onChange={(e) => setIdentifier(e.target.value)} data-testid="fichaje-username-input" required autoFocus />
             </div>
             <div>
               <Label>Contraseña</Label>

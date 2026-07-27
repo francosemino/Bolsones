@@ -10,8 +10,8 @@ import { Leaf, ExternalLink } from "lucide-react";
 export default function Login() {
   const { user, login } = useAuth();
   const nav = useNavigate();
-  const [email, setEmail] = useState("admin@bolsones.com");
-  const [password, setPassword] = useState("admin123");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +22,7 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      await login(email, password);
+      await login(identifier, password);
       nav("/app");
     } catch (e) {
       setError(formatApiError(e.response?.data?.detail) || e.message);
@@ -84,15 +84,16 @@ export default function Login() {
 
           <form onSubmit={submit} className="space-y-4">
             <div>
-              <Label htmlFor="email">Usuario</Label>
+              <Label htmlFor="identifier">Usuario</Label>
               <Input
-                id="email"
+                id="identifier"
                 type="text"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="usuario o email"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="Usuario o email"
                 data-testid="login-email-input"
                 required
+                autoFocus
               />
             </div>
             <div>

@@ -20,13 +20,13 @@ export function AuthProvider({ children }) {
     })();
   }, []);
 
-  const login = async (email, password) => {
-    const { data } = await api.post("/auth/login", { email, password });
+  const login = async (identifier, password) => {
+    const { data } = await api.post("/auth/login", { identifier, password });
     if (data.access_token) setToken(data.access_token);
     setUser(data.user);
     return data.user;
   };
-
+  
   const logout = async () => {
     try {
       await api.post("/auth/logout");

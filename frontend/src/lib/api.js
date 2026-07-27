@@ -16,6 +16,24 @@ api.interceptors.request.use((cfg) => {
   return cfg;
 });
 
+// Si el token venció (o es inválido) en cualquier pedido, sacamos a la
+// persona directo al login en vez de dejarla trabada con un cartel de error
+// sin explicación, salvo que el 401 sea del login mismo (credenciales mal
+// tipeadas, ese no debe redirigir).
+api.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    const isLoginCall = error.config?.url?.includes("/auth/login");
+    if (error.response?.status === 401 && !isLoginCall) {
+      localStorage.removeItem("bc_token");
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export function setToken(token) {
   if (token) localStorage.setItem("bc_token", token);
   else localStorage.removeItem("bc_token");
