@@ -44,7 +44,7 @@ export default function PublicOrder() {
 
   useEffect(() => {
     axios.get(`${API}/public/catalog`).then(r => setCatalog(r.data));
-    axios.get(`${API}/orders/next-delivery-dates`).then(r => {
+    axios.get(`${API}/orders/next-delivery-dates?count=1`).then(r => {
       setValidDates(r.data.dates || []);
       if (r.data.dates?.length) setForm(f => ({ ...f, scheduled_date: r.data.dates[0] }));
     });

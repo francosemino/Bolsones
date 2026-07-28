@@ -1024,10 +1024,8 @@ async def list_orders(status: Optional[str] = None, user: dict = Depends(current
 
 
 @api.get("/orders/next-delivery-dates")
-async def next_delivery_dates():
-    """Público (sin login): próximas fechas válidas de entrega para el
-    selector de fecha del catálogo online."""
-    return {"dates": _next_valid_delivery_dates(6)}
+async def next_delivery_dates(count: int = 6):
+    return {"dates": _next_valid_delivery_dates(min(count, 12))}
 
 
 @api.post("/orders")
