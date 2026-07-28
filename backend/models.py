@@ -59,6 +59,7 @@ class Product(BaseModel):
     last_purchase_at: Optional[str] = None
     reclassification_target_id: Optional[str] = None  # product to degrade this into
     active: bool = True
+    featured: bool = False  # aparece en "Los más pedidos" del catálogo público
     image: Optional[str] = None
     notes: Optional[str] = None
     created_at: str = Field(default_factory=now_iso)

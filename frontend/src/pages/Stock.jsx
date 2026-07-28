@@ -26,7 +26,7 @@ const UNITS = ["kg", "unidad", "cajon", "bolsa", "atado", "bulto"];
 const blankProduct = {
   name: "", plu: "", category: "verdura", unit: "kg", sale_mode: "per_weight",
   current_stock: 0, minimum_stock: 0, average_cost: 0, sale_price: 0,
-  reclassification_target_id: null,
+  reclassification_target_id: null, featured: false,
   active: true, notes: "",
 };
 
@@ -141,7 +141,7 @@ export default function Stock() {
                 return (
                   <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50/50" data-testid={`product-row-${p.id}`}>
                     <td className="px-4 py-3 font-mono-display text-sm text-gray-600">{p.plu || "—"}</td>
-                    <td className="px-4 py-3 font-medium">{p.name}</td>
+                    <td className="px-4 py-3 font-medium">{p.featured && <span title="Destacado">⭐ </span>}{p.name}</td>
                     <td className="px-4 py-3 capitalize text-gray-600">{p.category}</td>
                     <td className="px-4 py-3 text-xs text-gray-600">
                       {p.sale_mode === "per_weight" ? "por peso" : "por unidad"}
@@ -244,6 +244,18 @@ export default function Stock() {
                 </SelectContent>
               </Select>
               <div className="text-xs text-gray-500 mt-1">Al reclasificar, el stock se movería a este producto (más barato).</div>
+            </div>
+            <div className="col-span-2 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="featured-check"
+                checked={!!editing.featured}
+                onChange={(e) => setEditing({ ...editing, featured: e.target.checked })}
+                data-testid="product-featured-checkbox"
+              />
+              <Label htmlFor="featured-check" className="!mb-0">
+                Destacado (aparece en "Los más pedidos" del catálogo online)
+              </Label>
             </div>
             <div className="col-span-2">
               <Label>Observaciones</Label>

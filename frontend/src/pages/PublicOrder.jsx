@@ -7,7 +7,7 @@ import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import {
   Leaf, ShoppingBag, ShoppingCart, MapPin, Phone, Plus, Minus, Check,
-  Search, Apple, Carrot, Nut, Package, ChevronLeft, Calendar, Store, Truck, Wallet,
+  Search, Apple, Carrot, Package, ChevronLeft, Calendar, Store, Truck, Wallet, Nut, Star,
 } from "lucide-react";
 import { toast, Toaster } from "sonner";
 
@@ -33,8 +33,8 @@ export default function PublicOrder() {
   const [validDates, setValidDates] = useState([]);
   const [filter, setFilter] = useState("todos");
   const [search, setSearch] = useState("");
-  const [cart, setCart] = useState({}); // key -> {type, ref_id, name, unit_price, quantity, unit, sale_mode}
-  const [view, setView] = useState("catalog"); // catalog | checkout
+  const [cart, setCart] = useState({});
+  const [view, setView] = useState("catalog");
   const [form, setForm] = useState({
     customer_name: "", customer_phone: "", delivery_type: "retiro",
     address: "", scheduled_date: "", payment_method: "efectivo", notes: "",
@@ -50,7 +50,6 @@ export default function PublicOrder() {
     });
   }, []);
 
-  // ------- Carrito -------
   const addBag = (bt) => {
     const key = `bag_type-${bt.id}`;
     setCart({ ...cart, [key]: {
@@ -93,7 +92,6 @@ export default function PublicOrder() {
   const minimumMet = !hasLooseItems || looseKg >= 9 || looseUnits >= 9;
   const itemCount = items.reduce((s, i) => s + (i.type === "bag_type" ? i.quantity : 1), 0);
 
-  // ------- Filtro / búsqueda -------
   const searching = search.trim().length > 0;
   const s = search.trim().toLowerCase();
 
@@ -102,6 +100,13 @@ export default function PublicOrder() {
     if (!searching && filter !== "todos" && filter !== "bolsones") return [];
     return catalog.bag_types.filter(bt => !searching || bt.name.toLowerCase().includes(s));
   }, [catalog, filter, s, searching]);
+
+  // Productos destacados ("Los más pedidos") — solo se muestran en la vista
+  // general (sin buscar y con el filtro en "Todo"), como un local de delivery.
+  const featuredProducts = useMemo(() => {
+    if (!catalog || searching || filter !== "todos") return [];
+    return catalog.products.filter(p => p.featured);
+  }, [catalog, filter, searching]);
 
   const shownProducts = useMemo(() => {
     if (!catalog) return [];
@@ -113,7 +118,6 @@ export default function PublicOrder() {
     });
   }, [catalog, filter, s, searching]);
 
-  // ------- Submit -------
   const goCheckout = () => {
     if (!items.length) return toast.error("Agregá al menos un ítem a tu pedido");
     if (!minimumMet) return toast.error(`Los productos sueltos tienen un mínimo de 9kg o 9 productos (llevás ${looseUnits} / ${looseKg.toFixed(1)}kg)`);
@@ -148,7 +152,6 @@ export default function PublicOrder() {
 
   if (!catalog) return <div className="min-h-screen flex items-center justify-center text-gray-500">Cargando...</div>;
 
-  // ------- Confirmación -------
   if (confirmed) {
     const waMsg = encodeURIComponent(`Hola! Acabo de hacer un pedido en ${catalog.business.name}.\n\nCódigo: ${confirmed.code}\nNombre: ${form.customer_name}\nTotal: ${money(total)}\nPago: ${form.payment_method === "transferencia" ? "Transferencia" : "Efectivo"}\n\n¿Me confirman?`);
     return (
@@ -185,7 +188,6 @@ export default function PublicOrder() {
     );
   }
 
-  // ------- Checkout -------
   if (view === "checkout") {
     return (
       <div className="min-h-screen bg-[hsl(var(--background))] pb-28">
@@ -291,7 +293,6 @@ export default function PublicOrder() {
     );
   }
 
-  // ------- Catálogo -------
   return (
     <div className="min-h-screen bg-[hsl(var(--background))] pb-24">
       <Toaster position="top-center" richColors />
@@ -305,7 +306,6 @@ export default function PublicOrder() {
         <p className="text-white/70 text-sm mt-0.5">Bolsones armados o elegí fruta y verdura suelta.</p>
       </div>
 
-      {/* Buscador + filtros */}
       <div className="sticky top-0 z-10 bg-[hsl(var(--background))]/95 backdrop-blur border-b border-gray-100 px-4 py-3 space-y-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -334,7 +334,6 @@ export default function PublicOrder() {
       </div>
 
       <div className="max-w-lg mx-auto p-4 space-y-6">
-        {/* Bolsones */}
         {shownBags.length > 0 && (
           <div>
             <div className="label-uppercase mb-2 flex items-center gap-1.5"><Package className="w-3.5 h-3.5" /> Bolsones armados</div>
@@ -370,11 +369,41 @@ export default function PublicOrder() {
           </div>
         )}
 
-        {/* Productos sueltos */}
+        {featuredProducts.length > 0 && (
+          <div>
+            <div className="label-uppercase mb-2 flex items-center gap-1.5"><Star className="w-3.5 h-3.5" /> Los más pedidos</div>
+            <div className="grid grid-cols-2 gap-2">
+              {featuredProducts.map(p => {
+                const key = `product-${p.id}`;
+                const qty = cart[key]?.quantity || 0;
+                return (
+                  <div key={p.id} className="card-soft p-3" data-testid={`featured-product-${p.id}`}>
+                    <div className="font-medium text-sm">{p.name}</div>
+                    <div className="text-xs text-gray-500 font-mono-display mb-2">{money(p.sale_price)}/{p.sale_mode === "per_weight" ? "kg" : "u"}</div>
+                    <div className="flex items-center justify-between">
+                      {qty > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" onClick={() => bumpProduct(p, -step(p))}><Minus className="w-3.5 h-3.5" /></Button>
+                          <span className="font-mono-display font-semibold text-sm">{qty}{p.sale_mode === "per_weight" ? "kg" : ""}</span>
+                          <Button size="sm" variant="outline" onClick={() => bumpProduct(p, step(p))} data-testid={`add-featured-${p.id}`}><Plus className="w-3.5 h-3.5" /></Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="outline" className="w-full" onClick={() => bumpProduct(p, step(p))} data-testid={`add-featured-${p.id}`}>
+                          <Plus className="w-3.5 h-3.5 mr-1" /> Agregar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {shownProducts.length > 0 && (
           <div>
             <div className="label-uppercase mb-2 flex items-center justify-between">
-              <span className="flex items-center gap-1.5"><Apple className="w-3.5 h-3.5" /> Fruta y verdura suelta</span>
+              <span className="flex items-center gap-1.5"><Apple className="w-3.5 h-3.5" /> {filter === "todos" && !searching ? "Todo el catálogo" : "Fruta y verdura suelta"}</span>
             </div>
             {hasLooseItems && (
               <div className={`text-xs rounded-md px-3 py-2 mb-2 ${minimumMet ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
@@ -423,7 +452,6 @@ export default function PublicOrder() {
         </div>
       </div>
 
-      {/* Carrito flotante */}
       {itemCount > 0 && (
         <div className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-3">
           <div className="max-w-lg mx-auto">
