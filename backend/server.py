@@ -969,6 +969,49 @@ async def _send_whatsapp_order_confirmation(order: Order):
         )
     except Exception as e:
         logger.error(f"No se pudo enviar el WhatsApp de confirmación del pedido {order.code}: {e}")
+        
+        
+async def _notify_owner_new_order_whatsapp(order: Order):
+    """Avisa por WhatsApp al dueño del negocio (al número cargado en
+    Configuración) que llegó un pedido nuevo, incluyendo el teléfono del
+    cliente para que se pueda comunicar directo. Nunca bloquea la creación
+    del pedido si falla — solo queda en el log."""
+    account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
+    auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
+    from_whatsapp = os.environ.get("TWILIO_WHATSAPP_FROM")
+    template_owner = os.environ.get("TWILIO_TEMPLATE_AVISO_DUENO")
+    if not (account_sid and auth_token and from_whatsapp and template_owner):
+        logger.warning("Aviso de pedido nuevo por WhatsApp omitido: falta configuración de Twilio")
+        return
+
+    cfg = await db.business_config.find_one({"id": "main"}, {"_id": 0}) or {}
+    owner_whatsapp = cfg.get("whatsapp")
+    if not owner_whatsapp:
+        logger.warning("Aviso de pedido nuevo por WhatsApp omitido: falta el WhatsApp del negocio en Configuración")
+        return
+
+    try:
+        import json
+        from twilio.rest import Client
+
+        variables = {
+            "1": order.code,
+            "2": order.customer_name,
+            "3": order.customer_phone or "-",
+            "4": f"{order.total:.2f}",
+            "5": "Transferencia" if order.payment_method == "transferencia" else "Efectivo",
+            "6": _fmt_date_es(order.scheduled_date),
+        }
+        to_whatsapp = f"whatsapp:{_normalize_ar_whatsapp_number(owner_whatsapp)}"
+        client = Client(account_sid, auth_token)
+        client.messages.create(
+            from_=from_whatsapp,
+            to=to_whatsapp,
+            content_sid=template_owner,
+            content_variables=json.dumps(variables),
+        )
+    except Exception as e:
+        logger.error(f"No se pudo avisar al dueño por WhatsApp del pedido {order.code}: {e}")
                 
         
 @api.get("/orders")
@@ -1023,6 +1066,7 @@ async def public_create_order(payload: Order):
     await db.orders.insert_one(payload.model_dump())
     await _notify_owner_new_order(payload)
     await _send_whatsapp_order_confirmation(payload)
+    await _notify_owner_new_order_whatsapp(payload)
     return {"ok": True, "code": payload.code, "id": payload.id}
 
 
