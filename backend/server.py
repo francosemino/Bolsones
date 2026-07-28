@@ -2439,7 +2439,13 @@ async def startup():
         )
 
     await db.users.create_index("username", unique=True)
-    await db.users.create_index("email", unique=True, sparse=True)
+    try:
+        await db.users.create_index("email", unique=True, sparse=True)
+    except Exception:
+        # Choca con un índice viejo de "email" creado antes de separar
+        # username/email (mismo nombre, distintas opciones) — lo recreamos.
+        await db.users.drop_index("email_1")
+        await db.users.create_index("email", unique=True, sparse=True)
     await db.products.create_index("name")
     await db.bags.create_index("code", unique=True)
     await db.bags.create_index("status")
