@@ -147,7 +147,7 @@ async def add_stock_movement(product_id: str, mtype: str, qty: float, unit: str,
 # ============================================================
 @api.get("/")
 async def root():
-    return {"app": "BolsonesControl", "ok": True}
+    return {"app": "Bolsones Saludables", "ok": True}
 
 
 # ============================================================
@@ -1079,7 +1079,7 @@ async def public_catalog():
     ).sort("name", 1)]
     return {
         "business": {
-            "name": cfg.get("business_name") if cfg else "BolsonesControl",
+            "name": cfg.get("business_name") if cfg else "Bolsones Saludables",
             "phone": cfg.get("phone") if cfg else None,
             "whatsapp": cfg.get("whatsapp") if cfg else None,
             "address": cfg.get("address") if cfg else None,

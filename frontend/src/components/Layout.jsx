@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth, canAccess } from "../context/AuthContext";
+import { api } from "../lib/api";
 import { Toaster } from "../components/ui/sonner";
 import {
   LayoutDashboard, Package, ShoppingCart, Truck, ScanLine, Sprout,
@@ -42,6 +43,13 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
+  const [businessName, setBusinessName] = useState("BolsonesControl");
+
+  useEffect(() => {
+    api.get("/config").then(({ data }) => {
+      if (data?.business_name) setBusinessName(data.business_name);
+    }).catch(() => {}); // si falla, se queda con el nombre por defecto
+  }, []);
 
   const handleLogout = async () => {
     await logout();

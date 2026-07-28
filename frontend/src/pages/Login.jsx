@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { formatApiError } from "../lib/api";
+import axios from "axios";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -14,6 +15,13 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [businessName, setBusinessName] = useState("BolsonesControl");
+
+  useEffect(() => {
+    axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/public/catalog`)
+      .then(({ data }) => { if (data?.business?.name) setBusinessName(data.business.name); })
+      .catch(() => {});
+  }, []);
 
   if (user) return <Navigate to="/app" replace />;
 
@@ -33,7 +41,6 @@ export default function Login() {
 
   return (
     <div className="min-h-screen grid md:grid-cols-2">
-      {/* Left – hero */}
       <div className="hidden md:flex relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -48,7 +55,7 @@ export default function Login() {
             <div className="w-10 h-10 rounded-lg bg-white/15 backdrop-blur flex items-center justify-center">
               <Leaf className="w-5 h-5" />
             </div>
-            <div className="font-semibold text-lg" style={{ fontFamily: "Outfit" }}>BolsonesControl</div>
+            <div className="font-semibold text-lg" style={{ fontFamily: "Outfit" }}>{businessName}</div>
           </div>
           <div>
             <h1 className="text-4xl lg:text-5xl font-semibold leading-tight" style={{ fontFamily: "Outfit" }}>
@@ -65,18 +72,17 @@ export default function Login() {
               ))}
             </div>
           </div>
-          <div className="text-xs text-white/60">© {new Date().getFullYear()} BolsonesControl · Pensado para tu negocio</div>
+          <div className="text-xs text-white/60">© {new Date().getFullYear()} {businessName} · Pensado para tu negocio</div>
         </div>
       </div>
 
-      {/* Right – form */}
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-sm">
           <div className="md:hidden flex items-center gap-2 mb-8">
             <div className="w-10 h-10 rounded-lg bg-[hsl(var(--primary))] flex items-center justify-center">
               <Leaf className="w-5 h-5 text-white" />
             </div>
-            <div className="font-semibold text-lg" style={{ fontFamily: "Outfit" }}>BolsonesControl</div>
+            <div className="font-semibold text-lg" style={{ fontFamily: "Outfit" }}>{businessName}</div>
           </div>
           <div className="label-uppercase mb-2">Iniciá sesión</div>
           <h2 className="text-3xl font-semibold mb-1" style={{ fontFamily: "Outfit" }}>Bienvenido de nuevo</h2>
@@ -122,13 +128,6 @@ export default function Login() {
               {loading ? "Ingresando..." : "Ingresar al sistema"}
             </Button>
           </form>
-
-          <div className="mt-6 text-xs text-gray-500 border-t border-gray-200 pt-4 space-y-1.5">
-            <div className="label-uppercase text-[10px]">Cuentas demo</div>
-            <div><span className="font-mono-display">admin@bolsones.com</span> / admin123</div>
-            <div><span className="font-mono-display">cajero@bolsones.com</span> / cajero123</div>
-            <div><span className="font-mono-display">armador@bolsones.com</span> / armador123</div>
-          </div>
 
           <Link
             to="/pedido"
