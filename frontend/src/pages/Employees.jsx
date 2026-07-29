@@ -143,6 +143,7 @@ export default function Employees() {
               <th className="text-left px-4 py-3 font-medium">Tipo de pago</th>
               <th className="text-right px-4 py-3 font-medium">Monto</th>
               <th className="text-center px-4 py-3 font-medium">Acceso</th>
+              <th className="text-center px-4 py-3 font-medium">Fichaje</th>
               <th className="text-right px-4 py-3 font-medium">Acciones</th>
             </tr>
           </thead>
@@ -159,10 +160,15 @@ export default function Employees() {
                     ? <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">Sí</span>
                     : <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">No</span>}
                 </td>
+                <td className="px-4 py-3 text-center">
+                  <Button size="sm" variant="outline" onClick={() => viewAttendance(e)} data-testid={`view-attendance-${e.id}`}>
+                    <Clock className="w-3.5 h-3.5" />
+                  </Button>
+                </td>
                 <td className="px-4 py-3 text-right"><Button size="sm" variant="outline" onClick={() => openEdit({ ...e })}><Edit className="w-3.5 h-3.5" /></Button></td>
               </tr>
             ))}
-            {list.length === 0 && <tr><td colSpan={7} className="py-10 text-center text-gray-500">Sin empleados</td></tr>}
+            {list.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-gray-500">Sin empleados</td></tr>}
           </tbody>
         </table>
       </div>
@@ -196,10 +202,6 @@ export default function Employees() {
               <div className="label-uppercase mb-2 flex items-center gap-1.5">
                 <QrCode className="w-3.5 h-3.5" /> Acceso al sistema / fichaje QR
               </div>
-
-              <Button size="sm" variant="outline" className="mb-3" onClick={() => viewAttendance(edit)} data-testid="view-attendance-btn">
-                <Clock className="w-3.5 h-3.5 mr-1.5" /> Ver fichajes (últimos 60 días)
-              </Button>
 
               {linkedUser ? (
                 <div className="space-y-3">
