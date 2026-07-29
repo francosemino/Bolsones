@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { api, formatApiError } from "../lib/api";
 import { money } from "../lib/format";
 import { Button } from "../components/ui/button";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 const PAY = ["dia", "hora", "semanal", "quincenal", "mensual", "comision", "changa"];
 const ROLES = ["encargado", "cajero", "armador", "repartidor", "lectura"];
+const ATTENDANCE_PERIODS = [{ d: 7, l: "7 días" }, { d: 14, l: "14 días" }, { d: 30, l: "30 días" }];
 
 const PERMISSIONS = [
   { key: "ventas", label: "Ventas y caja" },
@@ -30,7 +31,8 @@ export default function Employees() {
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(blank);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
-  const [attendanceRows, setAttendanceRows] = useState([]);
+  const [attendanceSessions, setAttendanceSessions] = useState([]);
+  const [attendancePeriod, setAttendancePeriod] = useState(7);
   const [attendanceEmpName, setAttendanceEmpName] = useState("");
   const [linkedUser, setLinkedUser] = useState(null); // usuario del sistema vinculado a este empleado
   const [showLoginForm, setShowLoginForm] = useState(false);
@@ -71,23 +73,38 @@ export default function Employees() {
   const viewAttendance = async (emp) => {
     const { data } = await api.get("/attendance", { params: { employee_id: emp.id, days: 60 } });
     const sorted = [...data].sort((a, b) => a.created_at.localeCompare(b.created_at));
-    const days = {};
+    const sessions = [];
     let pendingIn = null;
     for (const e of sorted) {
-      const day = e.created_at.slice(0, 10);
-      if (!days[day]) days[day] = { entrada: null, salida: null };
-      if (e.type === "entrada") { days[day].entrada = e.created_at; pendingIn = e.created_at; }
-      else if (e.type === "salida" && pendingIn) { days[day].salida = e.created_at; pendingIn = null; }
+      if (e.type === "entrada") { pendingIn = e.created_at; }
+      else if (e.type === "salida") { sessions.push({ entrada: pendingIn, salida: e.created_at }); pendingIn = null; }
     }
-    const rows = Object.entries(days).map(([day, v]) => {
-      let hours = null;
-      if (v.entrada && v.salida) hours = (new Date(v.salida) - new Date(v.entrada)) / 3600000;
-      return { day, ...v, hours };
-    }).sort((a, b) => b.day.localeCompare(a.day));
-    setAttendanceRows(rows);
+    if (pendingIn) sessions.push({ entrada: pendingIn, salida: null }); // turno todavía sin cerrar
+    setAttendanceSessions(sessions);
     setAttendanceEmpName(emp.name);
+    setAttendancePeriod(7);
     setAttendanceOpen(true);
   };
+
+  const attendanceRows = useMemo(() => {
+    const cutoff = new Date(Date.now() - attendancePeriod * 24 * 3600 * 1000);
+    const filtered = attendanceSessions.filter(s => new Date(s.entrada) >= cutoff);
+    const byDay = {};
+    for (const s of filtered) {
+      const day = s.entrada.slice(0, 10);
+      if (!byDay[day]) byDay[day] = [];
+      byDay[day].push(s);
+    }
+    return Object.entries(byDay).map(([day, sess]) => {
+      const totalHours = sess.reduce((sum, s) => s.salida ? sum + (new Date(s.salida) - new Date(s.entrada)) / 3600000 : sum, 0);
+      return { day, sessions: sess, totalHours };
+    }).sort((a, b) => b.day.localeCompare(a.day));
+  }, [attendanceSessions, attendancePeriod]);
+
+  const attendanceGrandTotal = useMemo(
+    () => attendanceRows.reduce((s, r) => s + r.totalHours, 0),
+    [attendanceRows]
+  );
 
   const createLogin = async () => {
     if (!loginForm.username || !loginForm.password) return toast.error("Completá usuario y contraseña");
@@ -275,25 +292,50 @@ export default function Employees() {
       <Dialog open={attendanceOpen} onOpenChange={setAttendanceOpen}>
         <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Fichajes de {attendanceEmpName}</DialogTitle></DialogHeader>
-          <div className="space-y-1.5">
+
+          <div className="flex gap-2 mb-2">
+            {ATTENDANCE_PERIODS.map(opt => (
+              <button
+                key={opt.d}
+                onClick={() => setAttendancePeriod(opt.d)}
+                className={`px-3 py-1.5 rounded-full text-xs border ${attendancePeriod === opt.d ? "bg-[hsl(var(--primary))] text-white border-[hsl(var(--primary))]" : "border-gray-200 text-gray-600"}`}
+                data-testid={`attendance-period-${opt.d}`}
+              >
+                {opt.l}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex justify-between items-center bg-gray-50 rounded-md p-2.5 mb-2">
+            <span className="text-sm text-gray-600">Total del período</span>
+            <span className="font-mono-display font-semibold text-lg">{attendanceGrandTotal.toFixed(1)}hs</span>
+          </div>
+
+          <div className="space-y-2">
             {attendanceRows.map((r) => (
-              <div key={r.day} className="flex justify-between items-center text-sm border-b border-gray-100 py-2">
-                <div>
-                  <div className="font-medium">
+              <div key={r.day} className="border-b border-gray-100 py-2">
+                <div className="flex justify-between items-center">
+                  <div className="font-medium text-sm">
                     {new Date(r.day + "T00:00:00").toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })}
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {r.entrada ? new Date(r.entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}
-                    {" → "}
-                    {r.salida ? new Date(r.salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "sin salida"}
+                  <div className="font-mono-display font-semibold text-sm">
+                    {r.totalHours > 0 ? `${r.totalHours.toFixed(1)}hs` : "—"}
                   </div>
                 </div>
-                <div className="font-mono-display font-semibold">
-                  {r.hours !== null ? `${r.hours.toFixed(1)}hs` : "—"}
+                <div className="space-y-0.5 mt-1">
+                  {r.sessions.map((s, i) => (
+                    <div key={i} className="text-xs text-gray-500 flex justify-between">
+                      <span>
+                        {new Date(s.entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                        {" → "}
+                        {s.salida ? new Date(s.salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "sin salida"}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
-            {attendanceRows.length === 0 && <div className="text-sm text-gray-400 text-center py-6">Sin fichajes registrados</div>}
+            {attendanceRows.length === 0 && <div className="text-sm text-gray-400 text-center py-6">Sin fichajes en este período</div>}
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setAttendanceOpen(false)}>Cerrar</Button></DialogFooter>
         </DialogContent>
