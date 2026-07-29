@@ -285,6 +285,7 @@ async def create_product(payload: Product, user: dict = Depends(require_perm("st
 class BulkPriceItem(BaseModel):
     id: str
     sale_price: float
+    average_cost: Optional[float] = None  # si viene, también actualiza el costo
 
 
 @api.patch("/products/bulk-prices")
@@ -297,15 +298,25 @@ async def bulk_update_prices(payload: List[BulkPriceItem] = Body(...),
             continue
         old = float(prod.get("sale_price", 0))
         new = float(it.sale_price)
-        if abs(old - new) < 0.01:
+        old_cost = float(prod.get("average_cost", 0))
+        new_cost = float(it.average_cost) if it.average_cost is not None else old_cost
+        price_changed = abs(old - new) > 0.01
+        cost_changed = abs(old_cost - new_cost) > 0.01
+        if not price_changed and not cost_changed:
             continue
-        await db.products.update_one({"id": it.id}, {"$set": {"sale_price": new}})
-        hist = PriceHistory(
-            product_id=it.id, product_name=prod["name"],
-            old_price=old, new_price=new,
-            user_id=user["id"], user_name=user["name"],
-        )
-        await db.price_history.insert_one(hist.model_dump())
+        update = {}
+        if price_changed:
+            update["sale_price"] = new
+        if cost_changed:
+            update["average_cost"] = new_cost
+        await db.products.update_one({"id": it.id}, {"$set": update})
+        if price_changed:
+            hist = PriceHistory(
+                product_id=it.id, product_name=prod["name"],
+                old_price=old, new_price=new,
+                user_id=user["id"], user_name=user["name"],
+            )
+            await db.price_history.insert_one(hist.model_dump())
         updated += 1
     return {"updated": updated}
 
