@@ -4,6 +4,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
+import { Copy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 const MODULES = [
@@ -41,6 +42,29 @@ export default function Settings() {
         <div className="label-uppercase">Sistema</div>
         <h1 className="text-3xl sm:text-4xl font-semibold mt-1" style={{ fontFamily: "Outfit" }}>Configuración</h1>
         <p className="text-sm text-gray-500 mt-1">Datos del negocio y módulos habilitados</p>
+      </div>
+
+      <div className="card-soft p-5">
+        <div className="label-uppercase mb-2">Link de pedidos online</div>
+        <p className="text-sm text-gray-500 mb-3">Compartí este link con tus clientes (Instagram, WhatsApp, donde quieras) para que hagan pedidos.</p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Input readOnly value={`${window.location.origin}/pedido`} className="font-mono-display text-sm" data-testid="public-order-link-input" />
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/pedido`);
+                toast.success("Link copiado");
+              }}
+              data-testid="copy-public-order-link-btn"
+            >
+              <Copy className="w-4 h-4 mr-1.5" /> Copiar
+            </Button>
+            <a href="/pedido" target="_blank" rel="noreferrer">
+              <Button variant="outline"><ExternalLink className="w-4 h-4" /></Button>
+            </a>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
