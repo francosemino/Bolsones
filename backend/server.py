@@ -1057,7 +1057,7 @@ async def update_order(oid: str, payload: dict, user: dict = Depends(current_use
 
 
 @api.delete("/orders/{oid}")
-async def delete_order(oid: str, user: dict = Depends(require("encargado"))):
+async def delete_order(oid: str, user: dict = Depends(require_perm("pedidos"))):
     await db.orders.update_one({"id": oid}, {"$set": {"status": "cancelado"}})
     return {"ok": True}
 
@@ -1110,7 +1110,7 @@ async def cash_current(user: dict = Depends(current_user)):
 
 
 @api.post("/cash/open")
-async def cash_open(payload: dict, user: dict = Depends(require("cajero", "encargado"))):
+async def cash_open(payload: dict, user: dict = Depends(require_perm("ventas"))):
     existing = await db.cash_sessions.find_one({"status": "abierta"}, {"_id": 0})
     if existing:
         raise HTTPException(status_code=400, detail="Ya hay una caja abierta")
@@ -1124,7 +1124,7 @@ async def cash_open(payload: dict, user: dict = Depends(require("cajero", "encar
 
 
 @api.post("/cash/movement")
-async def cash_movement(payload: dict, user: dict = Depends(require("cajero", "encargado"))):
+async def cash_movement(payload: dict, user: dict = Depends(require_perm("ventas"))):
     session = await db.cash_sessions.find_one({"status": "abierta"}, {"_id": 0})
     if not session:
         raise HTTPException(status_code=400, detail="No hay caja abierta")
@@ -1142,7 +1142,7 @@ async def cash_movement(payload: dict, user: dict = Depends(require("cajero", "e
 
 
 @api.post("/cash/close")
-async def cash_close(payload: dict, user: dict = Depends(require("cajero", "encargado"))):
+async def cash_close(payload: dict, user: dict = Depends(require_perm("ventas"))):
     session = await db.cash_sessions.find_one({"status": "abierta"}, {"_id": 0})
     if not session:
         raise HTTPException(status_code=400, detail="No hay caja abierta")
@@ -1180,27 +1180,27 @@ async def cash_history(user: dict = Depends(current_user)):
 # EXPENSES
 # ============================================================
 @api.get("/expenses")
-async def list_expenses(user: dict = Depends(require("encargado"))):
+async def list_expenses(user: dict = Depends(require_perm("reportes"))):
     cursor = db.expenses.find({}, {"_id": 0}).sort("date", -1).limit(500)
     return [e async for e in cursor]
 
 
 @api.post("/expenses")
-async def create_expense(payload: Expense, user: dict = Depends(require("encargado"))):
+async def create_expense(payload: Expense, user: dict = Depends(require_perm("reportes"))):
     payload.id = new_id()
     await db.expenses.insert_one(payload.model_dump())
     return payload.model_dump()
 
 
 @api.patch("/expenses/{eid}")
-async def update_expense(eid: str, payload: dict, user: dict = Depends(require("encargado"))):
+async def update_expense(eid: str, payload: dict, user: dict = Depends(require_perm("reportes"))):
     payload.pop("id", None)
     await db.expenses.update_one({"id": eid}, {"$set": payload})
     return await db.expenses.find_one({"id": eid}, {"_id": 0})
 
 
 @api.delete("/expenses/{eid}")
-async def delete_expense(eid: str, user: dict = Depends(require("encargado"))):
+async def delete_expense(eid: str, user: dict = Depends(require_perm("reportes"))):
     await db.expenses.delete_one({"id": eid})
     return {"ok": True}
 
@@ -1215,21 +1215,21 @@ async def list_employees(user: dict = Depends(current_user)):
 
 
 @api.post("/employees")
-async def create_employee(payload: Employee, user: dict = Depends(require("encargado"))):
+async def create_employee(payload: Employee, user: dict = Depends(require_perm("empleados"))):
     payload.id = new_id()
     await db.employees.insert_one(payload.model_dump())
     return payload.model_dump()
 
 
 @api.patch("/employees/{eid}")
-async def update_employee(eid: str, payload: dict, user: dict = Depends(require("encargado"))):
+async def update_employee(eid: str, payload: dict, user: dict = Depends(require_perm("empleados"))):
     payload.pop("id", None)
     await db.employees.update_one({"id": eid}, {"$set": payload})
     return await db.employees.find_one({"id": eid}, {"_id": 0})
 
 
 @api.delete("/employees/{eid}")
-async def delete_employee(eid: str, user: dict = Depends(require("encargado"))):
+async def delete_employee(eid: str, user: dict = Depends(require_perm("empleados"))):
     await db.employees.update_one({"id": eid}, {"$set": {"active": False}})
     return {"ok": True}
 
@@ -1296,7 +1296,7 @@ async def clock_attendance(user: dict = Depends(current_user)):
 
 @api.get("/attendance")
 async def list_attendance(employee_id: Optional[str] = None, days: int = 31,
-                          user: dict = Depends(require("encargado"))):
+                          user: dict = Depends(require_perm("empleados"))):
     start = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     q = {"created_at": {"$gte": start}}
     if employee_id:
@@ -1327,7 +1327,7 @@ def _pair_attendance_hours(entries: list) -> float:
 
 @api.get("/payroll/calc")
 async def payroll_calc(employee_id: str, period_start: str, period_end: str,
-                       user: dict = Depends(require("encargado"))):
+                       user: dict = Depends(require_perm("empleados"))):
     emp = await db.employees.find_one({"id": employee_id}, {"_id": 0})
     if not emp:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
@@ -1368,7 +1368,7 @@ class PayrollPayPayload(BaseModel):
 
 
 @api.post("/payroll/pay")
-async def payroll_pay(payload: PayrollPayPayload, user: dict = Depends(require("encargado"))):
+async def payroll_pay(payload: PayrollPayPayload, user: dict = Depends(require_perm("empleados"))):
     emp = await db.employees.find_one({"id": payload.employee_id}, {"_id": 0})
     if not emp:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
@@ -1396,7 +1396,7 @@ async def payroll_pay(payload: PayrollPayPayload, user: dict = Depends(require("
 
 
 @api.get("/payroll/history")
-async def payroll_history(employee_id: Optional[str] = None, user: dict = Depends(require("encargado"))):
+async def payroll_history(employee_id: Optional[str] = None, user: dict = Depends(require_perm("empleados"))):
     q = {"employee_id": employee_id} if employee_id else {}
     cursor = db.payroll_payments.find(q, {"_id": 0}).sort("created_at", -1).limit(200)
     return [p async for p in cursor]
@@ -1412,7 +1412,7 @@ async def list_waste(user: dict = Depends(current_user)):
 
 
 @api.post("/waste")
-async def create_waste(payload: Waste, user: dict = Depends(require("encargado", "armador"))):
+async def create_waste(payload: Waste, user: dict = Depends(require_perm("perdidas"))):
     payload.id = new_id()
     payload.user_id = user["id"]
     payload.user_name = user["name"]
@@ -1452,7 +1452,7 @@ async def get_config(user: dict = Depends(current_user)):
 
 
 @api.put("/config")
-async def update_config(payload: dict, user: dict = Depends(require("encargado"))):
+async def update_config(payload: dict, user: dict = Depends(require_perm("config"))):
     payload.pop("id", None)
     await db.business_config.update_one({"id": "main"}, {"$set": payload}, upsert=True)
     return await db.business_config.find_one({"id": "main"}, {"_id": 0})
@@ -1628,14 +1628,14 @@ async def list_stations(user: dict = Depends(current_user)):
 
 
 @api.post("/stations")
-async def create_station(payload: SalesStation, user: dict = Depends(require("encargado"))):
+async def create_station(payload: SalesStation, user: dict = Depends(require_perm("config"))):
     payload.id = new_id()
     await db.sales_stations.insert_one(payload.model_dump())
     return payload.model_dump()
 
 
 @api.patch("/stations/{sid}")
-async def update_station(sid: str, payload: dict, user: dict = Depends(require("encargado"))):
+async def update_station(sid: str, payload: dict, user: dict = Depends(require_perm("config"))):
     payload.pop("id", None)
     await db.sales_stations.update_one({"id": sid}, {"$set": payload})
     return await db.sales_stations.find_one({"id": sid}, {"_id": 0})
@@ -1704,7 +1704,7 @@ class TicketCreatePayload(BaseModel):
 
 @api.post("/tickets")
 async def create_ticket(payload: TicketCreatePayload,
-                        user: dict = Depends(require("cajero", "encargado", "armador"))):
+                        user: dict = Depends(require_perm("ventas"))):
     station = await db.sales_stations.find_one({"id": payload.station_id}, {"_id": 0})
     if not station:
         raise HTTPException(status_code=404, detail="Puesto no encontrado")
@@ -1734,7 +1734,7 @@ class TicketItemPayload(BaseModel):
 
 @api.post("/tickets/{tid}/items")
 async def add_ticket_item(tid: str, payload: TicketItemPayload,
-                          user: dict = Depends(require("cajero", "encargado", "armador"))):
+                          user: dict = Depends(require_perm("ventas"))):
     t = await db.tickets.find_one({"id": tid}, {"_id": 0})
     if not t:
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
@@ -1791,7 +1791,7 @@ async def add_ticket_item(tid: str, payload: TicketItemPayload,
 
 @api.patch("/tickets/{tid}/items/{iid}")
 async def update_ticket_item(tid: str, iid: str, payload: dict,
-                             user: dict = Depends(require("cajero", "encargado", "armador"))):
+                             user: dict = Depends(require_perm("ventas"))):
     t = await db.tickets.find_one({"id": tid}, {"_id": 0})
     if not t:
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
@@ -1818,7 +1818,7 @@ async def update_ticket_item(tid: str, iid: str, payload: dict,
 
 @api.delete("/tickets/{tid}/items/{iid}")
 async def remove_ticket_item(tid: str, iid: str,
-                             user: dict = Depends(require("cajero", "encargado", "armador"))):
+                             user: dict = Depends(require_perm("ventas"))):
     t = await db.tickets.find_one({"id": tid}, {"_id": 0})
     if not t:
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
@@ -1835,7 +1835,7 @@ async def remove_ticket_item(tid: str, iid: str,
 
 @api.post("/tickets/{tid}/send")
 async def send_ticket_to_cashier(tid: str,
-                                 user: dict = Depends(require("cajero", "encargado", "armador"))):
+                                 user: dict = Depends(require_perm("ventas"))):
     t = await db.tickets.find_one({"id": tid}, {"_id": 0})
     if not t:
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
@@ -1858,7 +1858,7 @@ class TicketConfirmPayload(BaseModel):
 
 @api.post("/tickets/{tid}/confirm")
 async def confirm_ticket(tid: str, payload: TicketConfirmPayload,
-                         user: dict = Depends(require("cajero", "encargado"))):
+                         user: dict = Depends(require_perm("ventas"))):
     """Cobrar el ticket: descuenta stock, crea Sale, marca ticket cobrado."""
     t = await db.tickets.find_one({"id": tid}, {"_id": 0})
     if not t:
@@ -1990,7 +1990,7 @@ async def confirm_ticket(tid: str, payload: TicketConfirmPayload,
 
 
 @api.post("/tickets/{tid}/cancel")
-async def cancel_ticket(tid: str, user: dict = Depends(require("cajero", "encargado", "armador"))):
+async def cancel_ticket(tid: str, user: dict = Depends(require_perm("ventas"))):
     t = await db.tickets.find_one({"id": tid}, {"_id": 0})
     if not t:
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
@@ -2023,7 +2023,7 @@ class ReclassifyPayload(BaseModel):
 
 @api.post("/reclassify")
 async def reclassify(payload: ReclassifyPayload,
-                     user: dict = Depends(require("encargado", "armador"))):
+                     user: dict = Depends(require_perm("perdidas"))):
     src = await db.products.find_one({"id": payload.source_product_id}, {"_id": 0})
     if not src:
         raise HTTPException(status_code=404, detail="Producto origen no encontrado")
@@ -2083,7 +2083,7 @@ def _period_start(days: int) -> str:
 
 
 @api.get("/reports/losses")
-async def report_losses(days: int = 30, user: dict = Depends(require("encargado"))):
+async def report_losses(days: int = 30, user: dict = Depends(require_perm("reportes"))):
     """Pérdidas por producto: decomiso + reclasificación + descuentos."""
     start = _period_start(days)
 
@@ -2162,7 +2162,7 @@ async def report_losses(days: int = 30, user: dict = Depends(require("encargado"
 
 
 @api.get("/reports/ideal-vs-real")
-async def report_ideal_vs_real(days: int = 30, user: dict = Depends(require("encargado"))):
+async def report_ideal_vs_real(days: int = 30, user: dict = Depends(require_perm("reportes"))):
     """
     IDEAL (facturación potencial) = REAL (facturado) + DECOMISO + RECLASIFICACION + DESCUENTOS
     Por producto y global. Cada pérdida se valúa a precio pleno del producto.
@@ -2244,7 +2244,7 @@ async def report_ideal_vs_real(days: int = 30, user: dict = Depends(require("enc
 
 
 @api.get("/reports/product-analytics")
-async def product_analytics(days: int = 30, user: dict = Depends(require("encargado"))):
+async def product_analytics(days: int = 30, user: dict = Depends(require_perm("reportes"))):
     """Ventas, rentabilidad real, rotación y productos parados por producto."""
     start = _period_start(days)
     products = [p async for p in db.products.find({"active": True}, {"_id": 0})]
@@ -2307,7 +2307,7 @@ async def product_analytics(days: int = 30, user: dict = Depends(require("encarg
 
 
 @api.get("/reports/period-compare")
-async def report_period_compare(days: int = 7, user: dict = Depends(require("encargado"))):
+async def report_period_compare(days: int = 7, user: dict = Depends(require_perm("reportes"))):
     """Comparativa: últimos N días vs N días anteriores."""
     now = datetime.now(timezone.utc)
     cur_start = now - timedelta(days=days)
@@ -2343,7 +2343,7 @@ async def report_period_compare(days: int = 7, user: dict = Depends(require("enc
 
 
 @api.get("/reports/heatmap")
-async def report_heatmap(days: int = 30, user: dict = Depends(require("encargado"))):
+async def report_heatmap(days: int = 30, user: dict = Depends(require_perm("reportes"))):
     """Ventas por día de semana y por franja horaria."""
     start = _period_start(days)
     by_dow = [0]*7  # 0=Lunes
