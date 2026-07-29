@@ -24,11 +24,10 @@ api.interceptors.response.use(
   (res) => res,
   (error) => {
     const isLoginCall = error.config?.url?.includes("/auth/login");
-    if (error.response?.status === 401 && !isLoginCall) {
+    const isProtectedPage = window.location.pathname.startsWith("/app");
+    if (error.response?.status === 401 && !isLoginCall && isProtectedPage) {
       localStorage.removeItem("bc_token");
-      if (!window.location.pathname.startsWith("/login")) {
-        window.location.href = "/login";
-      }
+      window.location.href = "/login";
     }
     return Promise.reject(error);
   }
