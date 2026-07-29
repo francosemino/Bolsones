@@ -41,15 +41,13 @@ export default function Login() {
 
   return (
     <div className="min-h-screen grid md:grid-cols-2">
+      {/* Left – imagen del negocio */}
       <div className="hidden md:flex relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage:
-              "url(https://www.instagram.com/bolsonesaludablesbahia/",
-          }}
+          style={{ backgroundImage: "url(/imagenes/bolsones.png)" }}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-[#2C392F]/85 via-[#2C392F]/65 to-[#1F2922]/85" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1F2922]/90 via-[#2C392F]/20 to-[#2C392F]/40" />
         <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-lg bg-white/15 backdrop-blur flex items-center justify-center">
@@ -57,25 +55,11 @@ export default function Login() {
             </div>
             <div className="font-semibold text-lg" style={{ fontFamily: "Outfit" }}>{businessName}</div>
           </div>
-          <div>
-            <h1 className="text-4xl lg:text-5xl font-semibold leading-tight" style={{ fontFamily: "Outfit" }}>
-              Gestioná tu negocio<br />de bolsones, fresco.
-            </h1>
-            <p className="mt-4 text-white/80 text-base max-w-md leading-relaxed">
-              Stock, armado, balanza, etiquetas con QR, ventas, pedidos y reportes en un solo lugar pensado para verdulerías y armadores de bolsones.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3 text-xs">
-              {["Balanza simulada", "QR + Código de barras", "POS por escaneo", "Pedidos online"].map((t) => (
-                <span key={t} className="px-3 py-1.5 rounded-full bg-white/10 border border-white/15">
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="text-xs text-white/60">© {new Date().getFullYear()} {businessName} · Pensado para tu negocio</div>
+          <div className="text-xs text-white/70">© {new Date().getFullYear()} {businessName}</div>
         </div>
       </div>
 
+      {/* Right – form */}
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-sm">
           <div className="md:hidden flex items-center gap-2 mb-8">

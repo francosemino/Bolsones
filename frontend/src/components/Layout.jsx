@@ -46,8 +46,8 @@ export default function Layout() {
   const [businessName, setBusinessName] = useState("BolsonesControl");
 
   useEffect(() => {
-    api.get("/config").then(({ data }) => {
-      if (data?.business_name) setBusinessName(data.business_name);
+    api.get("/public/catalog").then(({ data }) => {
+      if (data?.business?.name) setBusinessName(data.business.name);
     }).catch(() => {}); // si falla, se queda con el nombre por defecto
   }, []);
 
