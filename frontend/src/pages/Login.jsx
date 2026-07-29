@@ -46,7 +46,7 @@ export default function Login() {
           className="absolute inset-0 bg-cover bg-center"
           style={{
             backgroundImage:
-              "url(https://images.unsplash.com/photo-1620706857370-e1b9770e8bb1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHw0fHxmcmVzaCUyMGZydWl0cyUyMHZlZ2V0YWJsZXMlMjBtaW5pbWFsfGVufDB8fHx8MTc4MDkzOTU1M3ww&ixlib=rb-4.1.0&q=85)",
+              "url(https://www.instagram.com/bolsonesaludablesbahia/",
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-br from-[#2C392F]/85 via-[#2C392F]/65 to-[#1F2922]/85" />
