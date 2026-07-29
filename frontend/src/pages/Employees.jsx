@@ -6,7 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
-import { Plus, Edit, KeyRound, UserX, QrCode } from "lucide-react";
+import { Plus, Edit, KeyRound, UserX, QrCode, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 const PAY = ["dia", "hora", "semanal", "quincenal", "mensual", "comision", "changa"];
@@ -29,6 +29,9 @@ export default function Employees() {
   const [list, setList] = useState([]);
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(blank);
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
+  const [attendanceRows, setAttendanceRows] = useState([]);
+  const [attendanceEmpName, setAttendanceEmpName] = useState("");
   const [linkedUser, setLinkedUser] = useState(null); // usuario del sistema vinculado a este empleado
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [loginForm, setLoginForm] = useState({ username: "", email: "", password: "", permissions: [] });
@@ -63,6 +66,27 @@ export default function Employees() {
       ...f,
       permissions: f.permissions.includes(key) ? f.permissions.filter(p => p !== key) : [...f.permissions, key],
     }));
+  };
+
+  const viewAttendance = async (emp) => {
+    const { data } = await api.get("/attendance", { params: { employee_id: emp.id, days: 60 } });
+    const sorted = [...data].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    const days = {};
+    let pendingIn = null;
+    for (const e of sorted) {
+      const day = e.created_at.slice(0, 10);
+      if (!days[day]) days[day] = { entrada: null, salida: null };
+      if (e.type === "entrada") { days[day].entrada = e.created_at; pendingIn = e.created_at; }
+      else if (e.type === "salida" && pendingIn) { days[day].salida = e.created_at; pendingIn = null; }
+    }
+    const rows = Object.entries(days).map(([day, v]) => {
+      let hours = null;
+      if (v.entrada && v.salida) hours = (new Date(v.salida) - new Date(v.entrada)) / 3600000;
+      return { day, ...v, hours };
+    }).sort((a, b) => b.day.localeCompare(a.day));
+    setAttendanceRows(rows);
+    setAttendanceEmpName(emp.name);
+    setAttendanceOpen(true);
   };
 
   const createLogin = async () => {
@@ -173,6 +197,10 @@ export default function Employees() {
                 <QrCode className="w-3.5 h-3.5" /> Acceso al sistema / fichaje QR
               </div>
 
+              <Button size="sm" variant="outline" className="mb-3" onClick={() => viewAttendance(edit)} data-testid="view-attendance-btn">
+                <Clock className="w-3.5 h-3.5 mr-1.5" /> Ver fichajes (últimos 60 días)
+              </Button>
+
               {linkedUser ? (
                 <div className="space-y-3">
                   <div className="text-sm bg-gray-50 rounded-md p-2.5">
@@ -239,6 +267,33 @@ export default function Employees() {
             <Button variant="outline" onClick={() => setOpen(false)}>Cerrar</Button>
             <Button onClick={save} className="bg-[hsl(var(--primary))]" data-testid="save-employee-btn">Guardar</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={attendanceOpen} onOpenChange={setAttendanceOpen}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Fichajes de {attendanceEmpName}</DialogTitle></DialogHeader>
+          <div className="space-y-1.5">
+            {attendanceRows.map((r) => (
+              <div key={r.day} className="flex justify-between items-center text-sm border-b border-gray-100 py-2">
+                <div>
+                  <div className="font-medium">
+                    {new Date(r.day + "T00:00:00").toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {r.entrada ? new Date(r.entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                    {" → "}
+                    {r.salida ? new Date(r.salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "sin salida"}
+                  </div>
+                </div>
+                <div className="font-mono-display font-semibold">
+                  {r.hours !== null ? `${r.hours.toFixed(1)}hs` : "—"}
+                </div>
+              </div>
+            ))}
+            {attendanceRows.length === 0 && <div className="text-sm text-gray-400 text-center py-6">Sin fichajes registrados</div>}
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setAttendanceOpen(false)}>Cerrar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

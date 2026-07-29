@@ -26,7 +26,10 @@ export default function Fichaje() {
     }
   };
 
-  useEffect(() => { if (user) loadStatus(); }, [user]);
+  useEffect(() => {
+    if (user) loadStatus();
+    else setDone(null); // al cerrar sesión, olvidamos la confirmación anterior
+  }, [user]);
 
   const submitLogin = async (e) => {
     e.preventDefault();
