@@ -45,7 +45,7 @@ export default function Login() {
       <div className="hidden md:flex relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url(/imagenes/bolsones.png)" }}
+          style={{ backgroundImage: "url(/imagenes/bolsones.jpg)" }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#1F2922]/90 via-[#2C392F]/20 to-[#2C392F]/40" />
         <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
