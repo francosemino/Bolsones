@@ -29,6 +29,8 @@ const blank = { name: "", phone: "", role: "cajero", payment_type: "mensual", pa
 export default function Employees() {
   const [list, setList] = useState([]);
   const [open, setOpen] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
+  const [creatingLogin, setCreatingLogin] = useState(false);
   const [edit, setEdit] = useState(blank);
   const [saving, setSaving] = useState(false);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
@@ -120,7 +122,9 @@ export default function Employees() {
   );
 
   const createLogin = async () => {
+    if (creatingLogin) return;
     if (!loginForm.username || !loginForm.password) return toast.error("Completá usuario y contraseña");
+    setCreatingLogin(true);
     try {
       const { data } = await api.post(`/employees/${edit.id}/create-login`, loginForm);
       toast.success("Usuario creado — ya puede fichar y usar el sistema con esos permisos");
@@ -129,6 +133,7 @@ export default function Employees() {
       setLinkedUser({ id: data.user_id, username: data.username, email: loginForm.email, permissions: loginForm.permissions });
       load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setCreatingLogin(false); }
   };
 
   const updateLinkedPermissions = async (newPerms) => {
@@ -140,7 +145,9 @@ export default function Employees() {
   };
 
   const unlinkLogin = async () => {
+    if (unlinking) return;
     if (!window.confirm(`¿Quitarle el acceso al sistema a ${edit.name}? Ya no va a poder loguearse ni fichar.`)) return;
+    setUnlinking(true);
     try {
       await api.post(`/employees/${edit.id}/unlink-login`);
       if (linkedUser) await api.patch(`/auth/users/${linkedUser.id}`, { active: false });
@@ -148,6 +155,7 @@ export default function Employees() {
       setLinkedUser(null);
       load();
     } catch (e) { toast.error("Error"); }
+    finally { setUnlinking(false); }
   };
 
   return (
@@ -264,7 +272,7 @@ export default function Employees() {
                     </div>
                     <div className="text-xs text-gray-400 mt-1">Fichar entrada/salida no necesita ningún permiso especial.</div>
                   </div>
-                  <Button size="sm" variant="outline" className="text-red-600" onClick={unlinkLogin} data-testid="unlink-login-btn">
+                  <Button size="sm" variant="outline" className="text-red-600" onClick={unlinkLogin} disabled={unlinking || actingOn === o.id} data-testid="unlink-login-btn">
                     <UserX className="w-3.5 h-3.5 mr-1.5" /> Quitar acceso
                   </Button>
                 </div>
@@ -289,7 +297,9 @@ export default function Employees() {
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => setShowLoginForm(false)}>Cancelar</Button>
-                    <Button size="sm" className="bg-[hsl(var(--primary))]" onClick={createLogin} data-testid="create-login-btn">Crear usuario</Button>
+                    <Button size="sm" className="bg-[hsl(var(--primary))]" onClick={createLogin} disabled={creatingLogin} data-testid="create-login-btn">
+                      {creatingLogin ? "Creando..." : "Crear usuario"}
+                    </Button>
                   </div>
                 </div>
               ) : (

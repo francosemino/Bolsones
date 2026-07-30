@@ -64,6 +64,7 @@ export default function PriceEditor() {
   const dirtyCount = products.filter(isDirty).length;
 
   const saveAll = async () => {
+    if (saving) return;
     const items = products.filter(isDirty).map(p => {
       const r = getRow(p);
       return { id: p.id, sale_price: Number(r.sale_price), average_cost: Number(r.average_cost) };

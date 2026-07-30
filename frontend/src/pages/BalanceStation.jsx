@@ -171,6 +171,7 @@ export default function BalanceStation() {
   };
 
   const sendToCashier = async () => {
+    if (sending) return;
     if (!activeTicket?.items?.length) return toast.error("Ticket vacío");
     setSending(true);
     try {
@@ -199,6 +200,7 @@ export default function BalanceStation() {
   };
 
   const createStation = async () => {
+    if (creatingStation) return;
     if (!newStationName.trim()) return toast.error("Ponele un nombre al puesto");
     setCreatingStation(true);
     try {

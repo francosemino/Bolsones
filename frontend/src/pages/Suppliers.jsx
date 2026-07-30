@@ -15,17 +15,21 @@ export default function Suppliers() {
   const [list, setList] = useState([]);
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState({ name: "", phone: "", address: "", type: "mayorista", notes: "", active: true });
+  const [saving, setSaving] = useState(false);
 
   const load = async () => setList((await api.get("/suppliers")).data);
   useEffect(() => { load(); }, []);
 
   const save = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       if (edit.id) await api.patch(`/suppliers/${edit.id}`, edit);
       else await api.post("/suppliers", edit);
       toast.success("Proveedor guardado");
       setOpen(false); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -94,7 +98,7 @@ export default function Suppliers() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save} className="bg-[hsl(var(--primary))]" data-testid="save-supplier-btn">Guardar</Button>
+            <Button onClick={save} disabled={saving} className="bg-[hsl(var(--primary))]" data-testid="save-supplier-btn">{saving ? "Guardando..." : "Guardar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

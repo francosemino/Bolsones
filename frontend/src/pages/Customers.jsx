@@ -15,16 +15,20 @@ export default function Customers() {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(blank);
+  const [saving, setSaving] = useState(false);
 
   const load = async () => setList((await api.get("/customers", { params: { search: search || undefined } })).data);
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [search]);
 
   const save = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       if (edit.id) await api.patch(`/customers/${edit.id}`, edit);
       else await api.post("/customers", edit);
       toast.success("Cliente guardado"); setOpen(false); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -102,7 +106,7 @@ export default function Customers() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save} className="bg-[hsl(var(--primary))]" data-testid="save-customer-btn">Guardar</Button>
+            <Button onClick={save} disabled={saving} className="bg-[hsl(var(--primary))]" data-testid="save-customer-btn">{saving ? "Guardando..." : "Guardar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

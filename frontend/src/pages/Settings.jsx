@@ -22,16 +22,20 @@ const MODULES = [
 
 export default function Settings() {
   const [cfg, setCfg] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     api.get("/config").then(r => setCfg(r.data));
   }, []);
 
   const save = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       await api.put("/config", cfg);
       toast.success("Configuración guardada");
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setSaving(false); }
   };
 
   if (!cfg) return <div className="text-gray-500">Cargando...</div>;
@@ -130,7 +134,7 @@ export default function Settings() {
       </div>
 
       <div className="flex justify-end">
-        <Button className="bg-[hsl(var(--primary))]" onClick={save} data-testid="save-config-btn">Guardar configuración</Button>
+        <Button className="bg-[hsl(var(--primary))]" onClick={save} disabled={saving} data-testid="save-config-btn">{saving ? "Guardando..." : "Guardar configuración"}</Button>
       </div>
     </div>
   );

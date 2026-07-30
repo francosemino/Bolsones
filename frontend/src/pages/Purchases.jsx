@@ -19,6 +19,7 @@ export default function Purchases() {
   const [payment, setPayment] = useState("efectivo");
   const [paymentStatus, setPaymentStatus] = useState("pagado");
   const [items, setItems] = useState([]);
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     const [a, b, c] = await Promise.all([
@@ -52,8 +53,10 @@ export default function Purchases() {
   const total = items.reduce((s, it) => s + Number(it.total_cost || 0), 0);
 
   const save = async () => {
+    if (saving) return;
+    if (!items.length) return toast.error("Agregá al menos un producto");
+    setSaving(true);
     try {
-      if (!items.length) return toast.error("Agregá al menos un producto");
       await api.post("/purchases", {
         supplier_id: supplier || null,
         items: items.map(it => ({
@@ -69,6 +72,7 @@ export default function Purchases() {
       toast.success("Compra registrada y stock actualizado");
       setOpen(false); setItems([]); setSupplier(""); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -192,7 +196,7 @@ export default function Purchases() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save} className="bg-[hsl(var(--primary))]" data-testid="save-purchase-btn">Registrar compra</Button>
+                        <Button onClick={save} disabled={saving} className="bg-[hsl(var(--primary))]" data-testid="save-purchase-btn">{saving ? "Registrando..." : "Registrar compra"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

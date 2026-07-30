@@ -16,6 +16,7 @@ export default function BagTypes() {
   const [products, setProducts] = useState([]);
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(blank);
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     const [a, b] = await Promise.all([api.get("/bag-types"), api.get("/products")]);
@@ -24,12 +25,15 @@ export default function BagTypes() {
   useEffect(() => { load(); }, []);
 
   const save = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       const body = { ...edit, recipe: edit.recipe.map(r => ({ ...r, quantity: Number(r.quantity) })) };
       if (edit.id) await api.patch(`/bag-types/${edit.id}`, body);
       else await api.post("/bag-types", body);
       toast.success("Tipo de bolsón guardado"); setOpen(false); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setSaving(false); }
   };
 
   const addRecipe = () => setEdit({ ...edit, recipe: [...edit.recipe, { product_id: "", quantity: 1, unit: "kg" }] });
@@ -143,7 +147,7 @@ export default function BagTypes() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save} className="bg-[hsl(var(--primary))]" data-testid="save-bag-type-btn">Guardar</Button>
+            <Button onClick={save} disabled={saving} className="bg-[hsl(var(--primary))]" data-testid="save-bag-type-btn">{saving ? "Guardando..." : "Guardar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

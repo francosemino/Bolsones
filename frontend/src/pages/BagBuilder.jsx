@@ -73,6 +73,7 @@ export default function BagBuilder() {
   };
 
   const build = async () => {
+    if (building) return;
     if (!selectedTypeId) return toast.error("Elegí un tipo de bolsón");
     if (!weight || Number(weight) <= 0) return toast.error("Ingresá un peso válido");
     setBuilding(true);

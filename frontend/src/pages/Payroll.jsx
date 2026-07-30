@@ -73,6 +73,7 @@ export default function Payroll() {
   };
 
   const pay = async () => {
+    if (paying) return;
     if (!calc) return;
     setPaying(true);
     try {

@@ -36,6 +36,7 @@ export default function Orders() {
   const [edit, setEdit] = useState(null);
   const [viewOrder, setViewOrder] = useState(null);
   const [statusFilter, setStatusFilter] = useState("activos"); // activos | <status> | todos
+  const [actingOn, setActingOn] = useState(null); // id del pedido con una acción en curso
 
   const load = async () => {
     const [o, bt, c, d] = await Promise.all([
@@ -47,31 +48,40 @@ export default function Orders() {
   useEffect(() => { load(); }, []);
 
   const advance = async (order, nextStatus) => {
+    if (actingOn) return;
+    setActingOn(order.id);
     try {
       await api.patch(`/orders/${order.id}`, { status: nextStatus });
       toast.success(`Pedido ${order.code} → ${STATUSES.find(s => s.key === nextStatus)?.label}`);
       if (viewOrder?.id === order.id) setViewOrder({ ...viewOrder, status: nextStatus });
       load();
     } catch (e) { toast.error("No se pudo actualizar"); }
+    finally { setActingOn(null); }
   };
 
   const cancel = async (order) => {
+    if (actingOn) return;
     if (!window.confirm(`¿Cancelar pedido ${order.code}?`)) return;
+    setActingOn(order.id);
     try {
       await api.patch(`/orders/${order.id}`, { status: "cancelado" });
       if (viewOrder?.id === order.id) setViewOrder(null);
       load();
     }
     catch (e) { toast.error("Error"); }
+    finally { setActingOn(null); }
   };
 
   const markPayment = async (order, status) => {
+    if (actingOn) return;
+    setActingOn(order.id);
     try {
       await api.patch(`/orders/${order.id}`, { payment_status: status });
       toast.success(status === "pagado" ? `${order.code} marcado como pagado` : `${order.code}: pago ${status}`);
       if (viewOrder?.id === order.id) setViewOrder({ ...viewOrder, payment_status: status });
       load();
     } catch (e) { toast.error("No se pudo actualizar el pago"); }
+    finally { setActingOn(null); }
   };
 
   const create = async (form) => {
@@ -195,6 +205,7 @@ export default function Orders() {
 
               <button
                 onClick={() => markPayment(o, o.payment_status === "pagado" ? "pendiente" : "pagado")}
+                disabled={actingOn === o.id}
                 className={`w-full flex items-center justify-center gap-1.5 mt-2.5 py-2 rounded-md text-sm font-medium ${
                   o.payment_status === "pagado" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
                 }`}
@@ -206,7 +217,7 @@ export default function Orders() {
 
               <div className="mt-2 flex gap-2">
                 {nextStatus && o.status !== "cancelado" && (
-                  <Button className="flex-1 h-11 bg-[hsl(var(--primary))]" onClick={() => advance(o, nextStatus.key)} data-testid={`advance-${o.code}`}>
+                  <Button className="flex-1 h-11 bg-[hsl(var(--primary))]" onClick={() => advance(o, nextStatus.key)} disabled={actingOn === o.id} data-testid={`advance-${o.code}`}>
                     {nextStatus.label} <ArrowRight className="w-4 h-4 ml-1.5" />
                   </Button>
                 )}
@@ -216,7 +227,7 @@ export default function Orders() {
                   </a>
                 )}
                 {o.status !== "entregado" && o.status !== "cancelado" && (
-                  <Button variant="ghost" className="h-11 w-11 p-0" onClick={() => cancel(o)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                  <Button variant="ghost" className="h-11 w-11 p-0" onClick={() => cancel(o)} disabled={actingOn === o.id}><Trash2 className="w-4 h-4 text-red-500" /></Button>
                 )}
               </div>
             </div>
@@ -348,6 +359,12 @@ function OrderDetailDialog({ order, onClose, onAdvance, onCancel, onMarkPayment 
 
 function OrderDialog({ open, setOpen, bagTypes, customers, validDates, onSave, initial }) {
   const [form, setForm] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try { await onSave(form); } finally { setSaving(false); }
+  };
   const addItem = () => setForm({ ...form, items: [...form.items, { type: "bag_type", ref_id: "", name: "", quantity: 1, unit_price: 0, subtotal: 0 }] });
   const updItem = (i, field, val) => {
     const next = [...form.items]; next[i] = { ...next[i], [field]: val };
@@ -433,7 +450,7 @@ function OrderDialog({ open, setOpen, bagTypes, customers, validDates, onSave, i
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-          <Button className="bg-[hsl(var(--primary))]" onClick={() => onSave(form)} data-testid="save-order-btn">Crear pedido</Button>
+          <Button className="bg-[hsl(var(--primary))]" onClick={handleSave} disabled={saving} data-testid="save-order-btn">{saving ? "Creando..." : "Crear pedido"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

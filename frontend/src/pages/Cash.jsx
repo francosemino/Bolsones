@@ -21,6 +21,7 @@ export default function Cash() {
   const [mvType, setMvType] = useState("ingreso");
   const [mvAmount, setMvAmount] = useState(0);
   const [mvDesc, setMvDesc] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     const [c, h] = await Promise.all([api.get("/cash/current"), api.get("/cash/history")]);
@@ -29,27 +30,36 @@ export default function Cash() {
   useEffect(() => { load(); }, []);
 
   const openCash = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       await api.post("/cash/open", { initial_amount: Number(initial) });
       toast.success("Caja abierta");
       setOpenDialog(false); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setSaving(false); }
   };
 
   const closeCash = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       await api.post("/cash/close", { real_amount: Number(real) });
       toast.success("Caja cerrada");
       setCloseDialog(false); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setSaving(false); }
   };
 
   const addMov = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       await api.post("/cash/movement", { type: mvType, amount: Number(mvAmount), description: mvDesc, method: "efectivo" });
       toast.success("Movimiento registrado");
       setMovDialog(false); setMvAmount(0); setMvDesc(""); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setSaving(false); }
   };
 
   const salesTotal = current?.movements?.filter(m => m.type === "venta").reduce((s, m) => s + m.amount, 0) || 0;
@@ -152,7 +162,7 @@ export default function Cash() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpenDialog(false)}>Cancelar</Button>
-            <Button onClick={openCash} className="bg-[hsl(var(--primary))]" data-testid="cash-open-confirm">Abrir</Button>
+                        <Button onClick={openCash} disabled={saving} className="bg-[hsl(var(--primary))]" data-testid="cash-open-confirm">{saving ? "Abriendo..." : "Abrir"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -167,7 +177,7 @@ export default function Cash() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCloseDialog(false)}>Cancelar</Button>
-            <Button onClick={closeCash} className="bg-[hsl(var(--primary))]" data-testid="cash-close-confirm">Cerrar caja</Button>
+            <Button onClick={closeCash} disabled={saving} className="bg-[hsl(var(--primary))]" data-testid="cash-close-confirm">{saving ? "Cerrando..." : "Cerrar caja"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -191,7 +201,7 @@ export default function Cash() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setMovDialog(false)}>Cancelar</Button>
-            <Button onClick={addMov} className="bg-[hsl(var(--primary))]">Registrar</Button>
+            <Button onClick={addMov} disabled={saving} className="bg-[hsl(var(--primary))]">{saving ? "Registrando..." : "Registrar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

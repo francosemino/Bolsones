@@ -21,6 +21,7 @@ export default function Bags() {
   const [list, setList] = useState([]);
   const [status, setStatus] = useState("disponible");
   const [search, setSearch] = useState("");
+  const [discarding, setDiscarding] = useState(false);
 
   const load = async () => {
     const { data } = await api.get("/bags", { params: { status, search: search || undefined } });
@@ -29,12 +30,15 @@ export default function Bags() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [status]);
 
   const discard = async (b) => {
+    if (discarding) return;
     if (!window.confirm(`¿Descartar bolsón ${b.code}? Esto lo marcará como pérdida.`)) return;
+    setDiscarding(true);
     try {
       await api.post(`/bags/${b.id}/discard`, { reason: "Descarte manual" });
       toast.success("Bolsón descartado");
       load();
     } catch (e) { toast.error("No se pudo descartar"); }
+    finally { setDiscarding(false); }
   };
 
   return (
@@ -89,7 +93,7 @@ export default function Bags() {
                         <Button size="sm" variant="outline" data-testid={`print-${b.code}`}><Printer className="w-3.5 h-3.5" /></Button>
                       </Link>
                       {b.status === "disponible" && (
-                        <Button size="sm" variant="outline" onClick={() => discard(b)}><Trash2 className="w-3.5 h-3.5 text-red-500" /></Button>
+                        <Button size="sm" variant="outline" disabled={discarding} onClick={() => discard(b)}><Trash2 className="w-3.5 h-3.5 text-red-500" /></Button>
                       )}
                     </div>
                   </td>

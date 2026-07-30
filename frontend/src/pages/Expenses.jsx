@@ -18,15 +18,19 @@ export default function Expenses() {
   const [list, setList] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(blank);
+  const [saving, setSaving] = useState(false);
 
   const load = async () => setList((await api.get("/expenses")).data);
   useEffect(() => { load(); }, []);
 
   const save = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       await api.post("/expenses", form);
       toast.success("Gasto registrado"); setOpen(false); setForm(blank); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setSaving(false); }
   };
 
   const total = list.reduce((s, e) => s + Number(e.amount), 0);
@@ -124,7 +128,7 @@ export default function Expenses() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save} className="bg-[hsl(var(--primary))]" data-testid="save-expense-btn">Guardar</Button>
+            <Button onClick={save} disabled={saving} className="bg-[hsl(var(--primary))]" data-testid="save-expense-btn">{saving ? "Guardando..." : "Guardar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

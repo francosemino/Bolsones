@@ -24,7 +24,8 @@ export default function Waste() {
   const [products, setProducts] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ product_id: "", quantity: 0, unit: "kg", reason: "podrido", estimated_cost: 0, notes: "" });
-
+  const [saving, setSaving] = useState(false);
+  
   const load = async () => {
     const [w, p] = await Promise.all([api.get("/waste"), api.get("/products")]);
     setList(w.data); setProducts(p.data);
@@ -41,12 +42,15 @@ export default function Waste() {
   };
 
   const save = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       await api.post("/waste", form);
       toast.success("Merma registrada");
       setOpen(false); setForm({ product_id: "", quantity: 0, unit: "kg", reason: "podrido", estimated_cost: 0, notes: "" });
       load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setSaving(false); }
   };
 
   const totalCost = list.reduce((s, w) => s + Number(w.estimated_cost || 0), 0);
@@ -128,7 +132,7 @@ export default function Waste() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save} className="bg-[hsl(var(--primary))]" data-testid="save-waste-btn">Registrar</Button>
+            <Button onClick={save} disabled={saving} className="bg-[hsl(var(--primary))]" data-testid="save-waste-btn">{saving ? "Registrando..." : "Registrar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

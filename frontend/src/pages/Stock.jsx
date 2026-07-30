@@ -39,6 +39,8 @@ export default function Stock() {
   const [editing, setEditing] = useState(blankProduct);
   const [delta, setDelta] = useState(0);
   const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [adjusting, setAdjusting] = useState(false);  
 
   const load = async () => {
     const { data } = await api.get("/products");
@@ -59,6 +61,8 @@ export default function Stock() {
   const openEdit = (p) => { setEditing({ ...p }); setOpen(true); };
 
   const save = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       if (editing.id) {
         await api.patch(`/products/${editing.id}`, editing);
@@ -71,10 +75,12 @@ export default function Stock() {
       load();
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail));
-    }
+    } finally { setSaving(false); }
   };
 
   const applyAdjust = async () => {
+    if (adjusting) return;
+    setAdjusting(true);
     try {
       await api.post(`/products/${adjustOpen.id}/adjust`, { delta: Number(delta), reason });
       toast.success("Stock ajustado");
@@ -83,7 +89,7 @@ export default function Stock() {
       load();
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail));
-    }
+    } finally { setAdjusting(false); }
   };
 
   return (
@@ -264,7 +270,7 @@ export default function Stock() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save} className="bg-[hsl(var(--primary))]" data-testid="save-product-btn">Guardar</Button>
+            <Button onClick={save} disabled={saving} className="bg-[hsl(var(--primary))]" data-testid="save-product-btn">{saving ? "Guardando..." : "Guardar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -288,7 +294,7 @@ export default function Stock() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAdjustOpen(null)}>Cancelar</Button>
-            <Button onClick={applyAdjust} className="bg-[hsl(var(--primary))]" data-testid="apply-adjust-btn">Aplicar ajuste</Button>
+            <Button onClick={applyAdjust} disabled={adjusting} className="bg-[hsl(var(--primary))]" data-testid="apply-adjust-btn">{adjusting ? "Aplicando..." : "Aplicar ajuste"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

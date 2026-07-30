@@ -41,6 +41,7 @@ export default function CashierQueue() {
   }, []);
 
   const confirm = async () => {
+    if (confirming) return;
     setConfirming(true);
     try {
       await api.post(`/tickets/${openTicket.id}/confirm`, {

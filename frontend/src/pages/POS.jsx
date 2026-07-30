@@ -23,6 +23,7 @@ export default function POS() {
   const [productResults, setProductResults] = useState([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [lastSale, setLastSale] = useState(null);
+  const [confirming, setConfirming] = useState(false);
   const nav = useNavigate();
 
   useEffect(() => {
@@ -97,10 +98,12 @@ export default function POS() {
   const total = Math.max(0, subtotal - Number(discount || 0));
 
   const confirm = async () => {
+    if (confirming) return;
     if (!cart.length) return toast.error("Carrito vacío");
     if (!cashSession) {
       if (!window.confirm("La caja no está abierta. ¿Continuar igual?")) return;
     }
+    setConfirming(true);
     try {
       const { data } = await api.post("/sales", {
         items: cart.map(it => ({
@@ -123,7 +126,7 @@ export default function POS() {
       toast.success(`Venta #${data.id.slice(0, 8)} registrada`);
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail));
-    }
+    } finally { setConfirming(false); }
   };
 
   return (
@@ -296,7 +299,7 @@ export default function POS() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancelar</Button>
-            <Button onClick={confirm} className="bg-[hsl(var(--primary))]" data-testid="pos-confirm-final-btn">Confirmar</Button>
+            <Button onClick={confirm} disabled={confirming} className="bg-[hsl(var(--primary))]" data-testid="pos-confirm-final-btn">{confirming ? "Confirmando..." : "Confirmar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
