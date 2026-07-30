@@ -6,8 +6,8 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
-import { Plus, Edit, KeyRound, UserX, QrCode, Clock } from "lucide-react";
-import { toast } from "sonner";
+import { Plus, Edit, KeyRound, UserX, QrCode, Clock, Trash2 }
+from "lucide-react";import { toast } from "sonner";
 
 const PAY = ["dia", "hora", "semanal", "quincenal", "mensual", "comision", "changa"];
 const ROLES = ["encargado", "cajero", "armador", "repartidor", "lectura"];
@@ -30,6 +30,7 @@ export default function Employees() {
   const [list, setList] = useState([]);
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(blank);
+  const [saving, setSaving] = useState(false);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [attendanceSessions, setAttendanceSessions] = useState([]);
   const [attendancePeriod, setAttendancePeriod] = useState(7);
@@ -38,7 +39,7 @@ export default function Employees() {
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [loginForm, setLoginForm] = useState({ username: "", email: "", password: "", permissions: [] });
 
-  const load = async () => setList((await api.get("/employees")).data);
+  const load = async () => setList((await api.get("/employees")).data.filter(e => e.active !== false));
   useEffect(() => { load(); }, []);
 
   const openEdit = async (emp) => {
@@ -56,11 +57,23 @@ export default function Employees() {
   };
 
   const save = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       if (edit.id) await api.patch(`/employees/${edit.id}`, edit);
       else await api.post("/employees", edit);
       toast.success("Empleado guardado"); setOpen(false); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setSaving(false); }
+  };
+
+  const deleteEmployee = async (emp) => {
+    if (!window.confirm(`¿Eliminar a ${emp.name}? Se conserva su historial de fichajes y sueldos, pero deja de aparecer en la lista.`)) return;
+    try {
+      await api.delete(`/employees/${emp.id}`);
+      toast.success("Empleado eliminado");
+      load();
+    } catch (e) { toast.error("Error"); }
   };
 
   const togglePerm = (key) => {
@@ -182,7 +195,12 @@ export default function Employees() {
                     <Clock className="w-3.5 h-3.5" />
                   </Button>
                 </td>
-                <td className="px-4 py-3 text-right"><Button size="sm" variant="outline" onClick={() => openEdit({ ...e })}><Edit className="w-3.5 h-3.5" /></Button></td>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex justify-end gap-1.5">
+                    <Button size="sm" variant="outline" onClick={() => openEdit({ ...e })}><Edit className="w-3.5 h-3.5" /></Button>
+                    <Button size="sm" variant="outline" className="text-red-600" onClick={() => deleteEmployee(e)} data-testid={`delete-employee-${e.id}`}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  </div>
+                </td>
               </tr>
             ))}
             {list.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-gray-500">Sin empleados</td></tr>}
@@ -284,7 +302,9 @@ export default function Employees() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cerrar</Button>
-            <Button onClick={save} className="bg-[hsl(var(--primary))]" data-testid="save-employee-btn">Guardar</Button>
+            <Button onClick={save} disabled={saving} className="bg-[hsl(var(--primary))]" data-testid="save-employee-btn">
+              {saving ? "Guardando..." : "Guardar"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
